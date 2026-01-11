@@ -3,563 +3,804 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini 智慧課堂互動 Canvas</title>
+    <title>形成性評量快速工具</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f0f2f5; }
-        .tool-card { transition: all 0.2s; cursor: pointer; }
-        .tool-card:hover { transform: translateY(-3px); box-shadow: 0 8px 15px -3px rgba(0,0,0,0.1); }
-        /* Markdown 內容樣式 */
-        .markdown-body p { margin-bottom: 1em; line-height: 1.6; }
-        .markdown-body h1, .markdown-body h2 { font-weight: bold; margin-top: 1em; margin-bottom: 0.5em; }
-        .markdown-body ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f3f4f6; }
+        .tool-btn { transition: all 0.2s; }
+        .tool-btn:active { transform: scale(0.98); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body class="flex flex-col min-h-screen text-gray-800">
 
-    <div id="toast-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-sm px-4"></div>
-
-    <nav class="bg-white shadow-sm border-b p-3 sticky top-0 z-40 flex justify-between items-center">
-        <div class="flex items-center gap-2">
-            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-1.5 rounded-lg shadow">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-            </div>
-            <h1 class="text-lg font-bold tracking-wide text-gray-700">Gemini 課堂互動</h1>
-            <span id="nav-room-badge" class="hidden bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded border border-indigo-200 font-mono font-bold"></span>
+    <!-- Navigation -->
+    <nav class="bg-white border-b px-4 py-3 flex justify-between items-center sticky top-0 z-50 shadow-sm h-16">
+        <!-- Logo / Home Button -->
+        <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition" onclick="resetApp()">
+            <div class="bg-blue-600 text-white p-2 rounded-lg font-bold text-xl h-10 w-10 flex items-center justify-center">A</div>
+            <h1 class="text-lg md:text-xl font-bold text-gray-700 hidden sm:block">課堂形成性評量</h1>
         </div>
         
-        <div class="flex items-center gap-2">
-            <span id="connection-status" class="text-xs px-2 py-1 rounded bg-gray-200 text-gray-500">連線中...</span>
-            
-            <button id="btn-show-qr" onclick="toggleQRCode()" class="hidden text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded flex items-center gap-1 transition">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4h2v-4zM6 6h6v6H6V6zm12 0h6v6h-6V6zm-6 12h6v6h-6v-6z"></path></svg>
-                QR Code
-            </button>
-            <button id="btn-teacher-login" onclick="promptTeacherLogin()" class="text-gray-400 hover:text-blue-600 text-sm font-medium px-2">
+        <div class="flex items-center gap-3">
+            <!-- Connection Status -->
+            <div id="connection-status" class="hidden md:flex items-center gap-2 text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                <span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> 連線中...
+            </div>
+
+            <!-- Teacher Controls (Hidden by default) -->
+            <div id="teacher-nav-controls" class="hidden flex items-center gap-2">
+                <button onclick="toggleQR()" class="bg-gray-700 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-gray-600 transition flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 2V5h1v1H5zM3 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 2v-1h1v1H5zM13 3a1 1 0 00-1 1v3a1 1 0 001 1h3a1 1 0 001-1V4a1 1 0 00-1-1h-3zm1 2v1h1V5h-1z" clip-rule="evenodd" /></svg>
+                    <span id="nav-room-code" class="font-mono text-yellow-400 text-lg tracking-wider">----</span>
+                </button>
+                <div class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-bold">教師端</div>
+            </div>
+
+            <!-- Teacher Login Button (Visible for Students) -->
+            <button id="btn-teacher-login" onclick="attemptTeacherLogin()" class="text-sm font-bold text-gray-500 hover:text-blue-600 px-2 py-1 border border-transparent hover:border-blue-100 rounded transition">
                 教師登入
             </button>
         </div>
     </nav>
 
-    <div id="qr-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="toggleQRCode()">
-        <div class="bg-white p-6 rounded-2xl shadow-2xl flex flex-col items-center max-w-sm w-full" onclick="event.stopPropagation()">
-            <h3 class="text-xl font-bold mb-2 text-gray-800">掃描加入課堂</h3>
-            <p class="text-gray-500 mb-4 text-sm">請學生使用相機掃描</p>
-            <div id="qrcode-container" class="border-4 border-white shadow-inner bg-gray-50 p-2 rounded-lg"></div>
-            <div class="mt-4 text-center">
-                <p class="text-sm text-gray-400">教室代碼</p>
-                <p class="text-3xl font-mono font-bold text-indigo-600 tracking-widest" id="qr-room-code">----</p>
-            </div>
-            <button onclick="toggleQRCode()" class="mt-6 w-full py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 font-bold">關閉</button>
-        </div>
-    </div>
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto p-4 max-w-6xl relative">
 
-    <div class="container mx-auto p-4 flex-grow flex flex-col relative max-w-5xl">
-
-        <div id="student-view" class="flex-grow flex flex-col items-center justify-center transition-all duration-300">
-            
-            <div id="student-login-card" class="w-full max-w-md bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
-                <div class="text-center mb-8">
-                    <h2 class="text-2xl font-bold text-gray-800">加入課堂</h2>
-                    <p class="text-gray-500 text-sm mt-1">請輸入代碼與座號</p>
+        <!-- 1. STUDENT VIEW: Login (Default View) -->
+        <div id="student-login-view" class="w-full max-w-md mx-auto mt-8 fade-in">
+            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-lg border border-gray-100">
+                <div class="text-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">加入課堂互動</h2>
+                    <p class="text-gray-500 text-sm mt-1">請輸入教室代碼與您的座號</p>
                 </div>
+                
                 <div class="space-y-5">
                     <div>
-                        <label class="block text-sm font-bold text-gray-600 mb-1">教室代碼</label>
-                        <input type="text" id="join-room-id" class="w-full p-4 border-2 border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:border-indigo-500 outline-none transition text-center font-mono text-2xl tracking-widest uppercase" placeholder="----" maxlength="4">
+                        <label class="block text-sm font-bold text-gray-600 mb-1">教室代碼 (Code)</label>
+                        <input type="text" id="join-code" class="w-full text-center text-4xl font-mono font-bold tracking-[0.2em] border-2 border-gray-200 rounded-xl p-3 bg-gray-50 focus:border-blue-500 focus:bg-white outline-none uppercase placeholder-gray-300 transition" maxlength="4" placeholder="----">
                     </div>
                     <div>
-                        <label class="block text-sm font-bold text-gray-600 mb-1">您的座號</label>
-                        <input type="number" id="join-seat" class="w-full p-3 border-2 border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:border-indigo-500 outline-none transition text-center text-lg" placeholder="例如: 15">
+                        <label class="block text-sm font-bold text-gray-600 mb-1">您的座號/姓名</label>
+                        <input type="text" id="join-seat" class="w-full text-center text-xl border-2 border-gray-200 rounded-xl p-3 bg-gray-50 focus:border-blue-500 focus:bg-white outline-none transition" placeholder="例如: 05">
                     </div>
-                    <button onclick="studentJoin()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-md transition active:scale-95 text-lg">
+                    <button onclick="studentLogin()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl text-lg hover:bg-blue-700 transition shadow-md active:scale-[0.98]">
                         進入教室
                     </button>
                 </div>
             </div>
+        </div>
 
-            <div id="student-dashboard" class="hidden w-full max-w-3xl space-y-6">
-                
-                <div id="ai-broadcast-display" class="hidden bg-white p-6 rounded-2xl shadow-lg border-l-4 border-purple-500">
-                    <div class="flex items-center gap-2 mb-4 border-b pb-2">
-                        <span class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-bold">AI 老師說</span>
-                        <span class="text-xs text-gray-400 ml-auto">即時同步中</span>
-                    </div>
-                    <div id="ai-content-text" class="markdown-body text-gray-800 text-lg leading-relaxed">
-                        </div>
+        <!-- 2. STUDENT VIEW: Waiting & Active Tool -->
+        <div id="student-workspace" class="hidden w-full max-w-md mx-auto fade-in">
+            
+            <!-- Header Info -->
+            <div class="flex justify-between items-center mb-4 bg-white p-3 rounded-lg shadow-sm">
+                <span class="text-gray-500 text-sm">教室: <span id="ws-room-code" class="font-mono font-bold text-black">----</span></span>
+                <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-bold">我是 <span id="student-seat-display">--</span></span>
+            </div>
+
+            <!-- Waiting State -->
+            <div id="student-waiting" class="text-center mt-12">
+                <div class="inline-block p-5 rounded-full bg-white shadow-md mb-6 animate-bounce">
+                    <svg class="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 </div>
+                <h3 class="text-xl font-bold text-gray-700">等待老師指令...</h3>
+                <p class="text-gray-400 text-sm mt-2">請看前方大螢幕</p>
+            </div>
 
-                <div id="tool-interface" class="hidden bg-white p-6 rounded-2xl shadow-lg border-2 border-indigo-50">
-                    <h3 id="tool-header" class="text-lg font-bold text-gray-800 mb-4 text-center">互動題目</h3>
-                    <div id="tool-form-content" class="mb-6"></div>
-                    <button id="student-submit-btn" onclick="submitResponse()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow transition active:scale-95">
-                        送出答案
-                    </button>
-                </div>
-
-                <div id="student-waiting" class="text-center py-10">
-                    <div class="inline-block p-4 rounded-full bg-gray-100 mb-4 animate-pulse">
-                        <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <!-- Active Tool Interface -->
+            <div id="student-active-tool" class="hidden mt-2">
+                <div class="bg-white p-6 rounded-2xl shadow-lg border-2 border-blue-50">
+                    <div class="flex items-center gap-2 mb-4 border-b pb-3">
+                        <span class="w-2 h-6 bg-blue-600 rounded-full"></span>
+                        <h3 id="student-tool-title" class="text-lg font-bold text-gray-800">互動題目</h3>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-600">等待老師指令...</h3>
-                    <p class="text-gray-400 text-sm mt-2">請注意前方大螢幕或等待內容更新</p>
+                    
+                    <div id="student-tool-content" class="min-h-[150px]"></div>
+                    
+                    <div class="mt-6 pt-4 border-t border-gray-100">
+                        <button id="btn-submit" onclick="submitResponse()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 rounded-xl transition shadow active:scale-[0.98] text-lg">
+                            送出答案
+                        </button>
+                        <p id="submit-status" class="text-center text-sm text-gray-400 mt-2 h-5 font-bold"></p>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div id="teacher-view" class="hidden flex-col gap-6">
+        <!-- 3. TEACHER VIEW -->
+        <div id="teacher-view" class="hidden flex flex-col gap-6 fade-in">
             
-            <div class="bg-white rounded-2xl shadow-lg border border-purple-100 overflow-hidden">
-                <div class="bg-gradient-to-r from-purple-600 to-indigo-600 p-4 text-white flex justify-between items-center">
-                    <h2 class="font-bold text-lg flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
-                        Gemini AI 廣播站
+            <!-- Tool Menu -->
+            <div id="tool-menu" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Assessment AS Learning -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                    <h2 class="text-gray-400 font-bold text-xs mb-4 uppercase tracking-widest flex items-center gap-2">
+                        <span class="w-2 h-2 bg-blue-500 rounded-full"></span> 學生自評 (As Learning)
                     </h2>
-                    <span class="text-xs bg-white/20 px-2 py-1 rounded">學生畫面將同步更新</span>
-                </div>
-                <div class="p-6">
-                    <div class="flex gap-2 mb-3">
-                        <input type="text" id="ai-prompt" class="flex-grow p-3 border rounded-xl focus:ring-2 focus:ring-purple-500 outline-none" placeholder="輸入指令：例如『出一題關於中秋節的英文選擇題』...">
-                        <button onclick="callGeminiAndBroadcast()" id="btn-ask-gemini" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-2 rounded-xl transition shadow flex items-center gap-2">
-                            <span>✨ 生成並廣播</span>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <button onclick="activateTool('selfAssess')" class="tool-btn bg-white hover:bg-blue-50 text-gray-700 hover:text-blue-700 p-4 rounded-xl font-bold text-left border border-gray-200 hover:border-blue-300 shadow-sm">
+                            <span class="text-xl block mb-1">📊</span> 自我評量量表
+                            <span class="block text-xs font-normal text-gray-400 mt-1">四階段認知檢核</span>
+                        </button>
+                        <button onclick="activateTool('reflection321')" class="tool-btn bg-white hover:bg-blue-50 text-gray-700 hover:text-blue-700 p-4 rounded-xl font-bold text-left border border-gray-200 hover:border-blue-300 shadow-sm">
+                            <span class="text-xl block mb-1">💡</span> 3-2-1 反思
+                            <span class="block text-xs font-normal text-gray-400 mt-1">收斂學習重點</span>
+                        </button>
+                        <button onclick="activateTool('oneSentence')" class="tool-btn bg-white hover:bg-blue-50 text-gray-700 hover:text-blue-700 p-4 rounded-xl font-bold text-left border border-gray-200 hover:border-blue-300 shadow-sm">
+                            <span class="text-xl block mb-1">📝</span> 一句話理解
+                            <span class="block text-xs font-normal text-gray-400 mt-1">20-50字摘要</span>
                         </button>
                     </div>
-                    <div class="text-xs text-gray-500 flex gap-2">
-                        <button onclick="setPrompt('請出一個關於現在完成式的選擇題，附上詳解')" class="hover:bg-gray-100 px-2 py-1 rounded border">英文題範例</button>
-                        <button onclick="setPrompt('請用簡單的英文解釋什麼是 SDGs')" class="hover:bg-gray-100 px-2 py-1 rounded border">SDGs 範例</button>
-                        <button onclick="clearAIContent()" class="ml-auto text-red-500 hover:underline">清除畫面</button>
+                </div>
+
+                <!-- Assessment FOR Learning -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                    <h2 class="text-gray-400 font-bold text-xs mb-4 uppercase tracking-widest flex items-center gap-2">
+                        <span class="w-2 h-2 bg-green-500 rounded-full"></span> 課堂檢核 (For Learning)
+                    </h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <button onclick="activateTool('fistFive')" class="tool-btn bg-white hover:bg-green-50 text-gray-700 hover:text-green-700 p-4 rounded-xl font-bold text-left border border-gray-200 hover:border-green-300 shadow-sm">
+                            <span class="text-xl block mb-1">🖐️</span> 從一到五
+                            <span class="block text-xs font-normal text-gray-400 mt-1">快速理解調查</span>
+                        </button>
+                        <button onclick="activateTool('whiteboard')" class="tool-btn bg-white hover:bg-green-50 text-gray-700 hover:text-green-700 p-4 rounded-xl font-bold text-left border border-gray-200 hover:border-green-300 shadow-sm">
+                            <span class="text-xl block mb-1">⬜</span> 小白板
+                            <span class="block text-xs font-normal text-gray-400 mt-1">短答/文字繪圖</span>
+                        </button>
+                        <button onclick="setupPoll()" class="tool-btn bg-white hover:bg-green-50 text-gray-700 hover:text-green-700 p-4 rounded-xl font-bold text-left border border-gray-200 hover:border-green-300 shadow-sm">
+                            <span class="text-xl block mb-1">🗳️</span> 即時投票
+                            <span class="block text-xs font-normal text-gray-400 mt-1">自訂選項 ABCD</span>
+                        </button>
+                        <button onclick="activateTool('trafficLight')" class="tool-btn bg-white hover:bg-green-50 text-gray-700 hover:text-green-700 p-4 rounded-xl font-bold text-left border border-gray-200 hover:border-green-300 shadow-sm">
+                            <span class="text-xl block mb-1">🚦</span> 紅綠燈
+                            <span class="block text-xs font-normal text-gray-400 mt-1">即時求助訊號</span>
+                        </button>
+                        <button onclick="activateTool('numberLine')" class="tool-btn bg-white hover:bg-green-50 text-gray-700 hover:text-green-700 p-4 rounded-xl font-bold text-left border border-gray-200 hover:border-green-300 shadow-sm">
+                            <span class="text-xl block mb-1">📏</span> 數線分布
+                            <span class="block text-xs font-normal text-gray-400 mt-1">1-10 信心度</span>
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <div id="teacher-tools" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div onclick="activateTool('fistFive')" class="tool-card bg-white p-5 rounded-xl border-l-4 border-green-500 shadow-sm">
-                    <h3 class="font-bold text-gray-800">🖐️ 1 到 5 理解度</h3>
-                    <p class="text-xs text-gray-400 mt-1">快速調查全班狀況</p>
-                </div>
-                <div onclick="activateTool('poll')" class="tool-card bg-white p-5 rounded-xl border-l-4 border-blue-500 shadow-sm">
-                    <h3 class="font-bold text-gray-800">📊 ABCD 投票</h3>
-                    <p class="text-xs text-gray-400 mt-1">選擇題統計</p>
-                </div>
-                <div onclick="activateTool('trafficLight')" class="tool-card bg-white p-5 rounded-xl border-l-4 border-red-500 shadow-sm">
-                    <h3 class="font-bold text-gray-800">🚦 紅綠燈求助</h3>
-                    <p class="text-xs text-gray-400 mt-1">不懂請亮紅燈</p>
-                </div>
-                <div onclick="activateTool('whiteboard')" class="tool-card bg-white p-5 rounded-xl border-l-4 border-yellow-500 shadow-sm">
-                    <h3 class="font-bold text-gray-800">📝 小白板</h3>
-                    <p class="text-xs text-gray-400 mt-1">文字問答</p>
-                </div>
-            </div>
-
-            <div id="live-results" class="hidden bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 id="result-title" class="text-xl font-bold text-gray-800">活動結果</h3>
-                    <button onclick="stopActivity()" class="text-red-600 hover:bg-red-50 px-3 py-1 rounded border border-red-200 text-sm font-bold">結束活動</button>
-                </div>
-                <div class="h-64 relative">
-                    <canvas id="chartCanvas" class="w-full h-full"></canvas>
-                    <div id="chart-empty" class="hidden absolute inset-0 flex items-center justify-center text-gray-400">尚無數據</div>
-                </div>
-                <div id="text-responses" class="mt-4 max-h-60 overflow-y-auto grid grid-cols-2 gap-2"></div>
-            </div>
-        </div>
-
-    </div>
-
-    <div id="login-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-[100] flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-xs">
-            <h3 class="text-lg font-bold mb-4 text-gray-800">教師驗證</h3>
-            <input type="password" id="passcode-input" class="w-full p-3 border rounded-lg mb-4 text-center text-xl tracking-widest" placeholder="輸入 tttt">
-            <div class="flex gap-2">
-                <button onclick="document.getElementById('login-modal').classList.add('hidden')" class="flex-1 py-2 bg-gray-100 rounded-lg text-gray-600">取消</button>
-                <button onclick="performTeacherLogin()" class="flex-1 py-2 bg-blue-600 text-white rounded-lg font-bold">確認</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // ==========================================
-        // ⚠️ 設定區 (請填入您的資料)
-        // ==========================================
-        
-        // 1. 填入您的 Gemini API Key (去 Google AI Studio 申請)
-        const GEMINI_API_KEY = "AIzaSyAeTm2RBnZ_sE2yLGbZjG2bDnxpM0tq_ak"; 
-
-        // 2. 填入 Firebase Config (原封不動或換成您新的)
-        const firebaseConfig = {
-            apiKey: "AIzaSyDhVIfEev0PhNHlBKL0vAeQy3jwJOsyVFs",
-            authDomain: "myassessmenttool.firebaseapp.com",
-            projectId: "myassessmenttool",
-            storageBucket: "myassessmenttool.firebasestorage.app",
-            messagingSenderId: "165443894580",
-            appId: "1:165443894580:web:16a2d9731f30fd6e107961"
-        };
-
-        // ==========================================
-        // 系統核心變數
-        // ==========================================
-        let db = null;
-        let currentRoomId = null;
-        let currentRole = 'student';
-        let studentSeat = '';
-        let unsubscribe = null; // 用來停止監聽
-        let chartInstance = null;
-
-        // 初始化
-        window.onload = function() {
-            // 初始化 Firebase
-            if (typeof firebase !== 'undefined' && firebase.apps.length === 0) {
-                try {
-                    firebase.initializeApp(firebaseConfig);
-                    db = firebase.firestore();
-                    // 匿名登入以取得權限
-                    firebase.auth().signInAnonymously().then(() => {
-                        updateStatus('🟢 雲端已連線');
-                    }).catch(err => {
-                        console.error("Auth Error:", err);
-                        updateStatus('🔴 連線失敗 (請檢查 Console)');
-                    });
-                } catch (e) {
-                    console.error("Firebase Init Error:", e);
-                    updateStatus('🔴 設定檔錯誤');
-                }
-            }
-
-            // 檢查網址參數 (是否透過 QR Code 進入)
-            const params = new URLSearchParams(window.location.search);
-            const room = params.get('room');
-            if (room) {
-                document.getElementById('join-room-id').value = room;
-            }
-        };
-
-        // ==========================================
-        // Gemini AI 廣播功能 (核心)
-        // ==========================================
-        async function callGeminiAndBroadcast() {
-            const prompt = document.getElementById('ai-prompt').value;
-            if(!prompt) return showToast("請輸入指令", "error");
-
-            const btn = document.getElementById('btn-ask-gemini');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = `<span class="loader"></span> 生成中...`;
-            btn.disabled = true;
-
-            try {
-                // 1. 呼叫 Gemini API
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: "你是一位國中助教。請根據以下要求產出內容(保持簡短，適合投影片顯示)：" + prompt }] }]
-                    })
-                });
+            <!-- Live Dashboard -->
+            <div id="live-dashboard" class="hidden rounded-2xl flex flex-col overflow-hidden min-h-[600px] fade-in space-y-4">
                 
-                const data = await response.json();
-                const aiText = data.candidates[0].content.parts[0].text;
+                <!-- Dashboard Header -->
+                <div class="bg-white px-6 py-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div class="flex items-center gap-4">
+                        <button onclick="stopActivity()" class="text-gray-500 hover:text-gray-800 transition bg-gray-100 p-2 rounded-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                        </button>
+                        <div>
+                            <h2 id="current-tool-name" class="text-xl font-bold text-gray-800">活動名稱</h2>
+                            <div class="flex gap-2 items-center">
+                                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                                <span class="text-sm text-gray-500 font-bold">進行中</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="exportCSV()" class="bg-white border hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1 shadow-sm transition">
+                            ⬇ 下載 CSV
+                        </button>
+                        <button onclick="stopActivity()" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg text-sm font-bold shadow-md transition flex items-center gap-2">
+                            <span>■</span> 結束並返回
+                        </button>
+                    </div>
+                </div>
 
-                // 2. 廣播到 Firebase (寫入 ai_board 欄位)
-                if(db && currentRoomId) {
-                    await db.collection('rooms').doc(currentRoomId).set({
-                        aiContent: aiText,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    }, { merge: true });
-                    showToast("已廣播到學生平板！", "success");
-                } else {
-                    showToast("尚未建立教室連線", "error");
+                <!-- SECTION 1: Teacher Demo Area (Student View Preview) -->
+                <div class="bg-white p-6 rounded-2xl shadow-lg border-2 border-blue-100">
+                    <div class="flex items-center justify-between mb-4 border-b border-gray-100 pb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-bold">教師示範區</span>
+                        </div>
+                    </div>
+                    <div id="teacher-demo-content" class="max-w-xl mx-auto">
+                        <!-- Content injected by JS -->
+                    </div>
+                </div>
+
+                <!-- SECTION 2: Stats & Responses -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-6">
+                    <!-- Stats Chart -->
+                    <div class="w-full md:w-5/12 flex flex-col">
+                        <h3 class="font-bold text-gray-700 mb-2 flex justify-between">
+                            <span>即時統計</span>
+                            <span id="response-count" class="text-sm bg-gray-100 px-2 py-0.5 rounded text-gray-600">已回應：0</span>
+                        </h3>
+                        <div id="chart-container" class="w-full h-64 relative bg-gray-50 rounded-xl border border-gray-100 p-2">
+                            <canvas id="resultChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Response List -->
+                    <div id="list-container" class="w-full md:w-7/12 flex flex-col">
+                        <h3 class="font-bold text-gray-700 mb-2">詳細回覆</h3>
+                        <div class="flex-grow overflow-y-auto max-h-[500px] no-scrollbar pr-2 bg-gray-50 rounded-xl border border-gray-100 p-2">
+                            <div id="response-list" class="grid grid-cols-1 gap-3"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modals (Same as before) -->
+    <div id="login-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onclick="closeLoginModal()">
+        <div class="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl transform transition-all scale-100" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">教師登入</h3>
+                <button onclick="closeLoginModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <p class="text-sm text-gray-500 mb-3">請輸入教師專用密碼</p>
+            <input type="password" id="teacher-pwd-input" class="w-full p-3 border rounded-xl mb-4 bg-gray-50 focus:bg-white focus:border-blue-500 outline-none transition" placeholder="輸入密碼 (edu)">
+            <div class="flex gap-3 justify-end">
+                <button onclick="closeLoginModal()" class="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg transition">取消</button>
+                <button onclick="submitTeacherLogin()" class="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-md transition">確認</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="qr-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onclick="toggleQR()">
+        <div class="bg-white p-6 rounded-2xl flex flex-col items-center max-w-xs w-full shadow-2xl animate-fade" onclick="event.stopPropagation()">
+            <h3 class="text-lg font-bold mb-2 text-gray-700">加入代碼</h3>
+            <p id="modal-room-code" class="text-4xl font-mono font-bold text-blue-600 tracking-widest mb-4">----</p>
+            <div id="qrcode" class="border-4 border-white shadow-md rounded-lg mb-4 bg-white"></div>
+            <p class="text-gray-400 text-xs mt-1">請學生掃描或輸入代碼</p>
+            <button onclick="toggleQR()" class="mt-4 text-sm text-gray-400 hover:text-gray-600 py-2 w-full border-t">關閉視窗</button>
+        </div>
+    </div>
+
+    <!-- Poll Modal (Updated) -->
+    <div id="poll-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-[100] flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-2xl w-full max-w-md shadow-2xl">
+            <h3 class="text-xl font-bold mb-4">設定投票選項</h3>
+            <p class="text-sm text-gray-500 mb-4">請輸入選項內容：</p>
+            
+            <div class="space-y-3 mb-6">
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-gray-500 w-4">A</span>
+                    <input type="text" id="poll-opt-0" class="flex-grow p-2 border rounded-lg bg-gray-50 focus:bg-white transition outline-none focus:border-blue-500" placeholder="選項 A" value="選項 A">
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-gray-500 w-4">B</span>
+                    <input type="text" id="poll-opt-1" class="flex-grow p-2 border rounded-lg bg-gray-50 focus:bg-white transition outline-none focus:border-blue-500" placeholder="選項 B" value="選項 B">
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-gray-500 w-4">C</span>
+                    <input type="text" id="poll-opt-2" class="flex-grow p-2 border rounded-lg bg-gray-50 focus:bg-white transition outline-none focus:border-blue-500" placeholder="選項 C" value="選項 C">
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-gray-500 w-4">D</span>
+                    <input type="text" id="poll-opt-3" class="flex-grow p-2 border rounded-lg bg-gray-50 focus:bg-white transition outline-none focus:border-blue-500" placeholder="選項 D" value="選項 D">
+                </div>
+            </div>
+
+            <div class="flex gap-3 justify-end">
+                <button onclick="document.getElementById('poll-modal').classList.add('hidden')" class="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg">取消</button>
+                <button onclick="startPoll()" class="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-md">開始投票</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onclick="this.classList.add('hidden')">
+        <div class="bg-white p-8 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-2xl" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <span id="view-seat" class="font-bold text-xl text-blue-600"></span>
+                <button onclick="document.getElementById('view-modal').classList.add('hidden')" class="text-gray-400 text-2xl hover:text-red-500">&times;</button>
+            </div>
+            <div id="view-content" class="text-lg leading-relaxed whitespace-pre-wrap text-gray-800 break-words"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, addDoc, onSnapshot, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Config ---
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'assessment-tool-demo';
+        
+        // --- Init ---
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- State ---
+        let currentRoomId = null;
+        let mySeat = '';
+        let chartInstance = null;
+        let currentToolData = [];
+        let unsubscribeResponses = null;
+        let unsubscribeRoom = null;
+        let isTeacher = false;
+        let isInitialized = false;
+
+        const TOOLS = {
+            'selfAssess': { name: '自我評量量表', type: 'chart' },
+            'reflection321': { name: '3-2-1 學習反思', type: 'text' },
+            'oneSentence': { name: '一句話理解', type: 'text' },
+            'fistFive': { name: '從一到五', type: 'chart' },
+            'whiteboard': { name: '小白板', type: 'text' },
+            'poll': { name: '即時投票', type: 'chart' },
+            'trafficLight': { name: '紅綠燈', type: 'chart' },
+            'numberLine': { name: '數線分布', type: 'chart' }
+        };
+
+        // --- Auth & Startup ---
+        async function initAuth() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else if (!auth.currentUser) {
+                    await signInAnonymously(auth);
                 }
-
             } catch (error) {
-                console.error(error);
-                showToast("AI 呼叫失敗，請檢查 API Key", "error");
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
+                console.error("Auth Error", error);
+                document.getElementById('connection-status').innerHTML = '<span class="text-red-500">連線失敗</span>';
             }
         }
 
-        function clearAIContent() {
-            if(db && currentRoomId) {
-                db.collection('rooms').doc(currentRoomId).update({ aiContent: "" });
+        initAuth();
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('connection-status').innerHTML = '<span class="w-2 h-2 rounded-full bg-green-500"></span> 已連線';
+                if (!isInitialized) {
+                    checkUrlParams();
+                    isInitialized = true;
+                }
             }
-            document.getElementById('ai-prompt').value = "";
+        });
+
+        // --- Soft Reset ---
+        window.resetApp = () => {
+            if (unsubscribeResponses) unsubscribeResponses();
+            if (unsubscribeRoom) unsubscribeRoom();
+            
+            currentRoomId = null;
+            mySeat = '';
+            currentToolData = [];
+            
+            document.getElementById('student-login-view').classList.remove('hidden');
+            document.getElementById('student-workspace').classList.add('hidden');
+            document.getElementById('teacher-view').classList.add('hidden');
+            document.getElementById('teacher-nav-controls').classList.add('hidden');
+            document.getElementById('btn-teacher-login').classList.remove('hidden');
+            
+            if (!window.location.search.includes('room')) {
+                 document.getElementById('join-code').value = '';
+            }
         }
 
-        function setPrompt(text) {
-            document.getElementById('ai-prompt').value = text;
+        function checkUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            const roomParam = params.get('room');
+            if (roomParam) {
+                document.getElementById('join-code').value = roomParam;
+                document.getElementById('join-seat').focus();
+            }
+            document.getElementById('student-login-view').classList.remove('hidden');
         }
 
-        // ==========================================
-        // 教師端邏輯
-        // ==========================================
-        function promptTeacherLogin() {
+        // --- Teacher Logic ---
+        window.attemptTeacherLogin = () => {
             document.getElementById('login-modal').classList.remove('hidden');
-        }
+            document.getElementById('teacher-pwd-input').value = '';
+            setTimeout(() => document.getElementById('teacher-pwd-input').focus(), 100);
+        };
 
-        function performTeacherLogin() {
-            const pwd = document.getElementById('passcode-input').value;
-            if (pwd === 'tttt') { // 密碼
-                document.getElementById('login-modal').classList.add('hidden');
-                initTeacherMode();
+        window.closeLoginModal = () => document.getElementById('login-modal').classList.add('hidden');
+
+        window.submitTeacherLogin = () => {
+            const pwd = document.getElementById('teacher-pwd-input').value;
+            if (pwd === 'edu') {
+                closeLoginModal();
+                initTeacher();
             } else {
-                showToast("密碼錯誤", "error");
+                alert("密碼錯誤");
+                document.getElementById('teacher-pwd-input').value = '';
+                document.getElementById('teacher-pwd-input').focus();
             }
-        }
+        };
 
-        function initTeacherMode() {
-            currentRole = 'teacher';
+        document.getElementById('teacher-pwd-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') submitTeacherLogin();
+        });
+
+        window.initTeacher = async () => {
+            isTeacher = true;
+            currentRoomId = generateRoomId();
             
-            // 產生隨機教室碼
-            let rid = sessionStorage.getItem('rid');
-            if(!rid) {
-                rid = Math.random().toString(36).substring(2,6).toUpperCase();
-                sessionStorage.setItem('rid', rid);
-            }
-            currentRoomId = rid;
-
-            // UI 切換
-            document.getElementById('student-view').classList.add('hidden');
+            document.getElementById('student-login-view').classList.add('hidden');
             document.getElementById('teacher-view').classList.remove('hidden');
-            document.getElementById('teacher-view').classList.add('flex');
-            
-            document.getElementById('btn-show-qr').classList.remove('hidden');
             document.getElementById('btn-teacher-login').classList.add('hidden');
-            
-            document.getElementById('nav-room-badge').classList.remove('hidden');
-            document.getElementById('nav-room-badge').innerText = `教室: ${rid}`;
-            document.getElementById('qr-room-code').innerText = rid;
+            document.getElementById('teacher-nav-controls').classList.remove('hidden');
+            document.getElementById('nav-room-code').innerText = currentRoomId;
+            document.getElementById('modal-room-code').innerText = currentRoomId;
 
-            showToast(`歡迎老師！教室建立成功 ${rid}`, "success");
-            
-            // 初始化資料庫文件
-            if(db) {
-                db.collection('rooms').doc(rid).set({
-                    activeTool: null,
-                    aiContent: "",
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                listenForResponses();
-            }
-        }
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
+            await setDoc(roomRef, {
+                activeTool: null,
+                createdAt: serverTimestamp(),
+                createdBy: auth.currentUser.uid
+            });
 
-        function toggleQRCode() {
-            const modal = document.getElementById('qr-modal');
-            const container = document.getElementById('qrcode-container');
+            const joinUrl = window.location.href.split('?')[0] + '?room=' + currentRoomId;
+            document.getElementById("qrcode").innerHTML = '';
+            new QRCode(document.getElementById("qrcode"), { text: joinUrl, width: 128, height: 128 });
+        };
+
+        window.activateTool = async (toolId, config = {}) => {
+            if (unsubscribeResponses) unsubscribeResponses();
             
-            if (modal.classList.contains('hidden')) {
-                modal.classList.remove('hidden');
-                container.innerHTML = ""; // 清空
-                // 產生網址 (目前的網址 + ?room=代碼)
-                const url = window.location.href.split('?')[0] + `?room=${currentRoomId}`;
-                new QRCode(container, {
-                    text: url,
-                    width: 200,
-                    height: 200
-                });
+            // 1. Update DB
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
+            await updateDoc(roomRef, { activeTool: toolId, toolConfig: config, timestamp: serverTimestamp() });
+
+            // 2. Switch UI
+            document.getElementById('tool-menu').classList.add('hidden');
+            document.getElementById('live-dashboard').classList.remove('hidden');
+            document.getElementById('current-tool-name').innerText = TOOLS[toolId].name;
+            document.getElementById('response-list').innerHTML = '';
+            document.getElementById('response-count').innerText = '已回應：0 人';
+
+            // 3. Render Teacher Demo (Top)
+            renderToolUI(document.getElementById('teacher-demo-content'), toolId, config, true);
+
+            // 4. Layout for Stats (Bottom)
+            const chartBox = document.getElementById('chart-container');
+            if (TOOLS[toolId].type === 'chart') {
+                chartBox.parentElement.classList.remove('hidden');
             } else {
-                modal.classList.add('hidden');
+                chartBox.parentElement.classList.add('hidden');
             }
-        }
 
-        function activateTool(toolId) {
-            if(!db || !currentRoomId) return;
+            // 5. Listen for responses
+            const respRef = collection(db, 'artifacts', appId, 'public', 'data', 'responses');
+            const q = query(respRef, where('roomId', '==', currentRoomId));
             
-            // 更新狀態讓學生端切換
-            db.collection('rooms').doc(currentRoomId).update({ activeTool: toolId });
-            
-            // UI 顯示
-            document.getElementById('live-results').classList.remove('hidden');
-            document.getElementById('result-title').innerText = toolNames[toolId];
-            document.getElementById('text-responses').innerHTML = ''; // 清空舊回答
-            
-            // 清空圖表
-            if(chartInstance) chartInstance.destroy();
-            document.getElementById('chartCanvas').classList.add('hidden');
-            document.getElementById('chart-empty').classList.remove('hidden');
-        }
+            unsubscribeResponses = onSnapshot(q, (snapshot) => {
+                let data = snapshot.docs.map(d => d.data());
+                data = data.filter(d => d.toolId === toolId);
+                data.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+                
+                currentToolData = data;
+                document.getElementById('response-count').innerText = `已回應：${data.length}`;
+                renderResults(toolId, data);
+            });
+        };
 
-        function stopActivity() {
-            if(db && currentRoomId) {
-                db.collection('rooms').doc(currentRoomId).update({ activeTool: null });
+        window.stopActivity = async (updateDB = true) => {
+            if (unsubscribeResponses) unsubscribeResponses();
+            if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+            currentToolData = [];
+            
+            if (updateDB) {
+                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
+                await updateDoc(roomRef, { activeTool: null });
+                document.getElementById('live-dashboard').classList.add('hidden');
+                document.getElementById('tool-menu').classList.remove('hidden');
             }
-            document.getElementById('live-results').classList.add('hidden');
-        }
+        };
 
-        function listenForResponses() {
-            // 監聽學生回答 (sub-collection: responses)
-            db.collection('rooms').doc(currentRoomId).collection('responses')
-                .orderBy('timestamp', 'desc')
-                .limit(50)
-                .onSnapshot(snapshot => {
-                    const data = snapshot.docs.map(d => d.data());
-                    updateChart(data);
-                });
-        }
-
-        // ==========================================
-        // 學生端邏輯
-        // ==========================================
-        function studentJoin() {
-            const rid = document.getElementById('join-room-id').value.toUpperCase();
-            const seat = document.getElementById('join-seat').value;
-
-            if(rid.length !== 4 || !seat) return showToast("請輸入完整資訊", "error");
-
-            currentRoomId = rid;
-            studentSeat = seat;
-
-            document.getElementById('student-login-card').classList.add('hidden');
-            document.getElementById('student-dashboard').classList.remove('hidden');
-            document.getElementById('nav-room-badge').classList.remove('hidden');
-            document.getElementById('nav-room-badge').innerText = `座號 ${seat}`;
-
-            // 開始監聽老師指令 (核心: onSnapshot)
-            if(db) {
-                db.collection('rooms').doc(rid).onSnapshot(doc => {
-                    if(doc.exists) {
-                        const data = doc.data();
-                        handleTeacherCommand(data);
-                    }
-                });
-            }
-        }
-
-        function handleTeacherCommand(data) {
-            // 1. 處理 AI 廣播
-            const aiArea = document.getElementById('ai-broadcast-display');
-            const aiText = document.getElementById('ai-content-text');
+        // --- Common Tool Rendering (Used for Student & Teacher Demo) ---
+        function renderToolUI(container, toolId, config, isTeacherDemo = false) {
+            let html = '';
             
-            if (data.aiContent && data.aiContent.length > 0) {
-                aiArea.classList.remove('hidden');
-                // 簡單將換行轉為 HTML
-                aiText.innerHTML = data.aiContent.replace(/\n/g, '<br>'); 
+            // Generate HTML (Identical to student view)
+            if (toolId === 'selfAssess') {
+                html = `<div class="space-y-3">
+                    <p class="font-bold mb-2 text-gray-700">學習狀況自評：</p>
+                    ${[{v:1, t:'1. 即使有人幫忙，我也不明白'}, {v:2, t:'2. 如果有人幫忙，我就能明白'}, {v:3, t:'3. 大致上了解，但我需要練習'}, {v:4, t:'4. 已經了解了，我需要更多挑戰'}].map(opt => `
+                        <label class="flex items-center p-4 border rounded-xl cursor-pointer hover:bg-blue-50 transition bg-gray-50">
+                            <input type="radio" name="sa_level" value="${opt.v}" class="w-5 h-5 text-blue-600">
+                            <span class="ml-3 text-sm font-medium text-gray-700">${opt.t}</span>
+                        </label>`).join('')}
+                    <textarea id="${isTeacherDemo ? 'sa_reason_demo' : 'sa_reason'}" class="w-full mt-3 p-3 border rounded-xl bg-gray-50 focus:bg-white transition outline-none" rows="2" placeholder="原因(必填)..."></textarea>
+                </div>`;
+            } else if (toolId === 'reflection321') {
+                html = `<div class="space-y-4">
+                    <div><label class="font-bold text-blue-600 block mb-1">3 個我學習到的知識</label><textarea id="${isTeacherDemo?'ref_3_d':'ref_3'}" class="w-full p-3 border rounded-xl bg-gray-50 focus:bg-white" placeholder="我學到了..."></textarea></div>
+                    <div><label class="font-bold text-green-600 block mb-1">2 個我覺得有趣或重要的地方</label><textarea id="${isTeacherDemo?'ref_2_d':'ref_2'}" class="w-full p-3 border rounded-xl bg-gray-50 focus:bg-white" placeholder="我覺得..."></textarea></div>
+                    <div><label class="font-bold text-red-600 block mb-1">1 個仍有疑問或想要探索的問題</label><input type="text" id="${isTeacherDemo?'ref_1_d':'ref_1'}" class="w-full p-3 border rounded-xl bg-gray-50 focus:bg-white" placeholder="我不懂..."></div>
+                </div>`;
+            } else if (toolId === 'oneSentence') {
+                html = `<p class="mb-2 text-gray-700 font-bold">請用一到兩句話說明今日所學</p>
+                    <p class="mb-2 text-gray-500 text-xs">字數限制：20 ~ 50 字</p>
+                    <textarea id="${isTeacherDemo?'os_text_d':'os_text'}" class="w-full p-3 border-2 rounded-xl h-40 focus:border-blue-500 outline-none text-lg" oninput="checkLen(this)" placeholder="請輸入..."></textarea>
+                    <div class="text-right text-sm mt-1"><span id="char-cnt" class="text-red-500 font-bold">0</span> / 50</div>`;
+            } else if (toolId === 'fistFive') {
+                html = `<p class="text-gray-500 text-center text-sm mb-4">(1代表非常不理解，5代表非常理解)</p>
+                <div class="flex justify-center gap-3 py-4">
+                    ${[1,2,3,4,5].map(n => `<button type="button" onclick="selectBtn(this, '${n}')" class="sel-btn w-14 h-14 rounded-full border-2 text-2xl font-bold hover:bg-green-100 transition bg-white shadow-sm">${n}</button>`).join('')}
+                </div><input type="hidden" id="ans_val">`;
+            } else if (toolId === 'whiteboard') {
+                html = `<textarea id="${isTeacherDemo?'wb_text_d':'wb_text'}" class="w-full p-4 border-2 rounded-xl h-48 text-lg bg-gray-50 focus:bg-white outline-none" placeholder="請在此作答..."></textarea>`;
+            } else if (toolId === 'poll') {
+                const opts = config.options || ['A','B','C','D'];
+                html = `<div class="grid grid-cols-2 gap-3">
+                    ${opts.map(o => `<button type="button" onclick="selectBtn(this, '${o}')" class="sel-btn p-5 border-2 rounded-2xl text-xl font-bold hover:bg-blue-50 transition break-words bg-white shadow-sm">${o}</button>`).join('')}
+                </div><input type="hidden" id="ans_val">`;
+            } else if (toolId === 'trafficLight') {
+                html = `<div class="space-y-3">
+                    <button type="button" onclick="selectBtn(this, 'Green')" class="sel-btn w-full p-4 border-2 rounded-xl text-lg font-bold bg-green-50 border-green-200 text-green-700 hover:bg-green-100 transition shadow-sm">🟢 綠燈 (懂了)</button>
+                    <button type="button" onclick="selectBtn(this, 'Yellow')" class="sel-btn w-full p-4 border-2 rounded-xl text-lg font-bold bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100 transition shadow-sm">🟡 黃燈 (不確定)</button>
+                    <button type="button" onclick="selectBtn(this, 'Red')" class="sel-btn w-full p-4 border-2 rounded-xl text-lg font-bold bg-red-50 border-red-200 text-red-700 hover:bg-red-100 transition shadow-sm">🔴 紅燈 (不懂)</button>
+                </div><input type="hidden" id="ans_val">`;
+            } else if (toolId === 'numberLine') {
+                html = `<div class="pt-8 pb-2 px-2">
+                    <input type="range" id="${isTeacherDemo?'nl_range_d':'nl_range'}" min="1" max="10" value="5" class="w-full h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="this.nextElementSibling.querySelector('.val-disp').innerText = this.value">
+                    <div class="flex justify-between mt-8 text-gray-500 font-bold text-sm">
+                        <span>1 (沒信心)</span>
+                        <span class="val-disp text-5xl -mt-12 text-blue-600 font-black">5</span>
+                        <span>10 (有信心)</span>
+                    </div>
+                </div>`;
+            }
+
+            // Append Submit Button
+            const btnText = "送出答案";
+            const btnAction = isTeacherDemo ? "alert('這是示範模式，不會送出資料。')" : "submitResponse()";
+            const btnColor = isTeacherDemo ? "bg-gray-500 hover:bg-gray-600" : "bg-green-600 hover:bg-green-700";
+            
+            html += `<div class="mt-6 pt-4 border-t border-gray-100">
+                <button onclick="${btnAction}" class="w-full ${btnColor} text-white font-bold py-3.5 rounded-xl transition shadow text-lg">${btnText}</button>
+                ${!isTeacherDemo ? '<p id="submit-status" class="text-center text-sm text-gray-400 mt-2 h-5 font-bold"></p>' : ''}
+            </div>`;
+
+            container.innerHTML = html;
+        }
+
+        window.setupPoll = () => document.getElementById('poll-modal').classList.remove('hidden');
+        
+        window.startPoll = () => {
+            const inputs = [
+                document.getElementById('poll-opt-0').value,
+                document.getElementById('poll-opt-1').value,
+                document.getElementById('poll-opt-2').value,
+                document.getElementById('poll-opt-3').value
+            ];
+            const options = inputs.map(s => s.trim()).filter(s => s);
+            if (options.length < 2) return alert('請至少輸入兩個選項');
+            document.getElementById('poll-modal').classList.add('hidden');
+            activateTool('poll', { options });
+        };
+
+        // --- Student Logic ---
+        window.studentLogin = () => {
+            const code = document.getElementById('join-code').value.trim().toUpperCase();
+            const seat = document.getElementById('join-seat').value.trim();
+            if (code.length < 3 || !seat) return alert('請輸入完整資訊');
+
+            currentRoomId = code;
+            mySeat = seat;
+
+            document.getElementById('student-login-view').classList.add('hidden');
+            document.getElementById('student-workspace').classList.remove('hidden');
+            
+            document.getElementById('ws-room-code').innerText = code;
+            document.getElementById('student-seat-display').innerText = seat;
+
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
+            unsubscribeRoom = onSnapshot(roomRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    handleRoomUpdate(data);
+                } else {
+                    alert('找不到此教室代碼');
+                    resetApp();
+                }
+            });
+        };
+
+        function handleRoomUpdate(data) {
+            const waitingEl = document.getElementById('student-waiting');
+            const activeEl = document.getElementById('student-active-tool');
+            
+            if (!data.activeTool) {
+                waitingEl.classList.remove('hidden');
+                activeEl.classList.add('hidden');
+                document.getElementById('student-tool-content').innerHTML = '';
             } else {
-                aiArea.classList.add('hidden');
-            }
-
-            // 2. 處理互動工具
-            const toolArea = document.getElementById('tool-interface');
-            const waitArea = document.getElementById('student-waiting');
-
-            if (data.activeTool) {
-                waitArea.classList.add('hidden');
-                toolArea.classList.remove('hidden');
-                renderTool(data.activeTool);
-            } else {
-                toolArea.classList.add('hidden');
-                if (!data.aiContent) waitArea.classList.remove('hidden'); // 如果連 AI 都沒有，才顯示等待
+                waitingEl.classList.add('hidden');
+                activeEl.classList.remove('hidden');
+                // Render for Student (isTeacherDemo = false)
+                renderToolUI(document.getElementById('student-tool-content'), data.activeTool, data.toolConfig, false);
             }
         }
 
-        function submitResponse() {
-            const val = getToolValue();
-            if(!val) return showToast("請作答", "error");
+        // --- Shared Logic ---
+        window.selectBtn = (el, val) => {
+            // Find parent container to scope querySelector
+            const container = el.closest('div').parentElement; 
+            container.querySelectorAll('.sel-btn').forEach(b => b.classList.remove('ring-4', 'ring-offset-2', 'ring-blue-400', 'border-blue-600', 'scale-110'));
+            el.classList.add('ring-4', 'ring-offset-2', 'ring-blue-400', 'border-blue-600', 'scale-110');
+            // This works because ans_val is in the same container
+            container.querySelector('input[type="hidden"]').value = val;
+        };
 
-            const btn = document.getElementById('student-submit-btn');
+        window.checkLen = (el) => {
+            const len = el.value.length;
+            const cnt = el.parentElement.querySelector('#char-cnt');
+            cnt.innerText = len;
+            cnt.className = (len >= 20 && len <= 50) ? 'text-green-600 font-bold' : 'text-red-500 font-bold';
+        };
+
+        window.submitResponse = async () => {
+            const btn = document.getElementById('btn-submit');
             btn.disabled = true;
             btn.innerText = "傳送中...";
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
 
-            // 寫入 Firestore
-            db.collection('rooms').doc(currentRoomId).collection('responses').add({
-                seat: studentSeat,
-                value: val,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
-                showToast("送出成功", "success");
-                btn.innerText = "已送出";
-                setTimeout(() => { btn.disabled = false; btn.innerText = "更新答案"; }, 2000);
-            });
-        }
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
+            const roomSnap = await getDoc(roomRef);
+            const toolId = roomSnap.data()?.activeTool;
 
-        // ==========================================
-        // 工具渲染與圖表邏輯 (Helper)
-        // ==========================================
-        const toolNames = { fistFive: '🖐️ 1-5 理解度', poll: '📊 ABCD 投票', trafficLight: '🚦 紅綠燈', whiteboard: '📝 小白板' };
-        let currentToolType = '';
+            if (!toolId) return;
 
-        function renderTool(type) {
-            currentToolType = type;
-            const container = document.getElementById('tool-form-content');
-            document.getElementById('tool-header').innerText = toolNames[type];
-            
-            if(type === 'fistFive') {
-                container.innerHTML = `<div class="flex justify-center gap-2">${[1,2,3,4,5].map(n=>`<button onclick="selectOpt(this, '${n}')" class="opt-btn w-12 h-12 border-2 rounded-full font-bold text-gray-500 hover:bg-indigo-50">${n}</button>`).join('')}</div><input type="hidden" id="ans-input">`;
-            } else if(type === 'poll') {
-                container.innerHTML = `<div class="grid grid-cols-2 gap-4">${['A','B','C','D'].map(o=>`<button onclick="selectOpt(this, '${o}')" class="opt-btn p-4 border-2 rounded-xl text-xl font-bold hover:bg-blue-50">${o}</button>`).join('')}</div><input type="hidden" id="ans-input">`;
-            } else if(type === 'trafficLight') {
-                container.innerHTML = `<div class="space-y-3"><button onclick="selectOpt(this, 'Green')" class="opt-btn w-full p-4 border-2 border-green-200 bg-green-50 text-green-700 font-bold rounded-xl">🟢 我懂了</button><button onclick="selectOpt(this, 'Red')" class="opt-btn w-full p-4 border-2 border-red-200 bg-red-50 text-red-700 font-bold rounded-xl">🔴 我不懂</button></div><input type="hidden" id="ans-input">`;
-            } else { // whiteboard
-                container.innerHTML = `<textarea id="ans-input" class="w-full h-32 p-3 border-2 rounded-xl focus:border-indigo-500 outline-none" placeholder="請輸入..."></textarea>`;
-            }
-        }
-
-        window.selectOpt = (el, val) => {
-            document.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('ring-4', 'ring-indigo-300', 'border-indigo-500'));
-            el.classList.add('ring-4', 'ring-indigo-300', 'border-indigo-500');
-            document.getElementById('ans-input').value = val;
-        }
-
-        function getToolValue() {
-            return document.getElementById('ans-input').value;
-        }
-
-        function updateChart(data) {
-            // 教師端圖表更新邏輯 (簡化版)
-            const canvas = document.getElementById('chartCanvas');
-            const empty = document.getElementById('chart-empty');
-            const textContainer = document.getElementById('text-responses');
-
-            // 判斷是否為文字回應
-            const isText = data.length > 0 && (data[0].value.length > 5 || currentRole === 'whiteboard');
-            
-            if (data.length === 0) {
-                canvas.classList.add('hidden'); empty.classList.remove('hidden'); return;
-            }
-
-            if (isText) {
-                canvas.classList.add('hidden'); empty.classList.add('hidden');
-                textContainer.innerHTML = data.map(d => `<div class="bg-gray-50 p-2 rounded border"><span class="font-bold text-indigo-600">${d.seat}:</span> ${d.value}</div>`).join('');
+            let val = null;
+            // Note: In student view, IDs are standard (no suffix)
+            if (toolId === 'selfAssess') {
+                const el = document.querySelector('input[name="sa_level"]:checked');
+                const reason = document.getElementById('sa_reason').value.trim();
+                if(!el) { resetBtn(); return alert('請選擇程度'); }
+                if(!reason) { resetBtn(); return alert('請輸入原因'); }
+                val = { level: el.value, reason: reason };
+            } else if (toolId === 'reflection321') {
+                val = {
+                    p3: document.getElementById('ref_3').value,
+                    p2: document.getElementById('ref_2').value,
+                    p1: document.getElementById('ref_1').value
+                };
+            } else if (toolId === 'oneSentence') {
+                val = document.getElementById('os_text').value;
+                if(val.length < 20 || val.length > 50) { resetBtn(); return alert('請符合字數限制'); }
+            } else if (toolId === 'whiteboard') {
+                val = document.getElementById('wb_text').value;
+            } else if (toolId === 'numberLine') {
+                val = document.getElementById('nl_range').value;
             } else {
-                // 繪製圖表 (Bar Chart)
-                canvas.classList.remove('hidden'); empty.classList.add('hidden');
-                textContainer.innerHTML = '';
-                
-                const counts = {};
-                data.forEach(d => counts[d.value] = (counts[d.value] || 0) + 1);
-                
-                if(chartInstance) chartInstance.destroy();
-                chartInstance = new Chart(canvas, {
-                    type: 'bar',
-                    data: {
-                        labels: Object.keys(counts),
-                        datasets: [{ label: '人數', data: Object.values(counts), backgroundColor: '#4f46e5' }]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false }
-                });
+                val = document.getElementById('ans_val').value;
+                if(!val) { resetBtn(); return alert('請選擇一個選項'); }
             }
+
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'responses'), {
+                    roomId: currentRoomId,
+                    toolId: toolId,
+                    seat: mySeat,
+                    value: val,
+                    timestamp: serverTimestamp()
+                });
+                document.getElementById('submit-status').innerText = "✅ 傳送成功";
+                btn.innerText = "更新答案";
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } catch (e) {
+                console.error(e);
+                alert("傳送失敗");
+                resetBtn();
+            }
+
+            function resetBtn() { 
+                btn.innerText = "送出答案"; 
+                btn.disabled = false; 
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        };
+
+        // --- Helper Utils ---
+        window.toggleQR = () => document.getElementById('qr-modal').classList.toggle('hidden');
+        window.generateRoomId = () => {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let res = '';
+            for(let i=0; i<4; i++) res += chars.charAt(Math.floor(Math.random() * chars.length));
+            return res;
+        }
+        window.viewDetail = (seat, txt) => {
+            document.getElementById('view-seat').innerText = `${seat} 的回答`;
+            document.getElementById('view-content').innerText = txt;
+            document.getElementById('view-modal').classList.remove('hidden');
+        };
+        window.exportCSV = () => {
+            if (currentToolData.length === 0) return alert('無資料可下載');
+            const rows = currentToolData.map(d => {
+                let valStr = typeof d.value === 'object' ? JSON.stringify(d.value) : d.value;
+                valStr = `"${String(valStr).replace(/"/g, '""')}"`;
+                return `${d.seat},${valStr},${d.timestamp ? new Date(d.timestamp.seconds*1000).toLocaleTimeString() : ''}`;
+            });
+            const csvContent = "\uFEFF座號,內容,時間\n" + rows.join("\n");
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `Results_${currentRoomId}.csv`;
+            link.click();
+        };
+
+        function renderResults(toolId, data) {
+            const listEl = document.getElementById('response-list');
+            listEl.innerHTML = '';
+            data.forEach(d => {
+                let content = '';
+                if (toolId === 'selfAssess') {
+                    content = `<span class="font-bold text-blue-600 text-lg">L${d.value.level}</span> <span class="text-gray-600 text-sm ml-2 border-l pl-2">${d.value.reason || ''}</span>`;
+                } else if (toolId === 'reflection321') {
+                    content = `<div class="text-sm space-y-1"><div class="flex"><span class="text-blue-600 font-bold w-6">3:</span><span>${d.value.p3}</span></div><div class="flex"><span class="text-green-600 font-bold w-6">2:</span><span>${d.value.p2}</span></div><div class="flex"><span class="text-red-600 font-bold w-6">1:</span><span>${d.value.p1}</span></div></div>`;
+                } else if (toolId === 'whiteboard' || toolId === 'oneSentence') {
+                    content = `<div class="cursor-pointer hover:bg-blue-50 p-2 rounded transition text-gray-700" onclick="window.viewDetail('${d.seat}', this.innerText)">${d.value}</div>`;
+                } else if (toolId === 'trafficLight') {
+                    const colorMap = { 'Red': '🔴 紅', 'Yellow': '🟡 黃', 'Green': '🟢 綠' };
+                    content = `<span class="font-bold text-lg">${colorMap[d.value] || d.value}</span>`;
+                } else {
+                    content = `<span class="font-mono font-bold text-xl text-indigo-600">${d.value}</span>`;
+                }
+                const div = document.createElement('div');
+                div.className = "bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex items-start gap-3 hover:shadow-md transition";
+                div.innerHTML = `<div class="bg-gray-100 text-gray-600 font-bold rounded-lg px-2 py-1.5 text-sm whitespace-nowrap min-w-[3.5rem] text-center">${d.seat}</div><div class="flex-grow break-words pt-1">${content}</div>`;
+                listEl.appendChild(div);
+            });
+            if (TOOLS[toolId].type === 'chart') updateChart(toolId, data);
         }
 
-        function updateStatus(msg) {
-            document.getElementById('connection-status').innerText = msg;
-        }
-
-        function showToast(msg, type) {
-            const el = document.createElement('div');
-            el.className = `p-4 rounded-lg shadow-lg text-white mb-2 text-center ${type==='error'?'bg-red-500':'bg-green-600'}`;
-            el.innerText = msg;
-            document.getElementById('toast-container').appendChild(el);
-            setTimeout(() => el.remove(), 2500);
+        function updateChart(toolId, data) {
+            const ctx = document.getElementById('resultChart');
+            if (!ctx) return;
+            let labels = [], counts = [], colors = [];
+            if (toolId === 'fistFive') {
+                labels = ['1', '2', '3', '4', '5'];
+                let map = {1:0, 2:0, 3:0, 4:0, 5:0};
+                data.forEach(d => map[d.value] = (map[d.value]||0) + 1);
+                counts = Object.values(map);
+                colors = '#3b82f6';
+            } else if (toolId === 'poll') {
+                let map = {};
+                data.forEach(d => map[d.value] = (map[d.value] || 0) + 1);
+                labels = Object.keys(map).sort();
+                counts = labels.map(k => map[k]);
+                colors = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6'];
+            } else if (toolId === 'trafficLight') {
+                let map = {'Red':0, 'Yellow':0, 'Green':0};
+                data.forEach(d => map[d.value] = (map[d.value] || 0) + 1);
+                labels = ['紅燈', '黃燈', '綠燈'];
+                counts = [map['Red'], map['Yellow'], map['Green']];
+                colors = ['#EF4444', '#F59E0B', '#10B981'];
+            } else if (toolId === 'selfAssess') {
+                 labels = ['L1', 'L2', 'L3', 'L4'];
+                 let map = {1:0, 2:0, 3:0, 4:0};
+                 data.forEach(d => map[d.value.level] = (map[d.value.level]||0) + 1);
+                 counts = Object.values(map);
+                 colors = '#8B5CF6';
+            } else if (toolId === 'numberLine') {
+                labels = Array.from({length:10}, (_,i)=>i+1);
+                let map = {};
+                data.forEach(d => map[d.value] = (map[d.value]||0) + 1);
+                counts = labels.map(l => map[l] || 0);
+                colors = '#6366F1';
+            }
+            if (chartInstance) chartInstance.destroy();
+            const isPie = (toolId === 'trafficLight' || toolId === 'poll');
+            chartInstance = new Chart(ctx, {
+                type: isPie ? 'doughnut' : 'bar',
+                data: { labels: labels, datasets: [{ label: '人數', data: counts, backgroundColor: colors, borderWidth: 1, borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: isPie, position: 'right' } }, scales: isPie ? {} : { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+            });
         }
     </script>
 </body>

@@ -313,9 +313,18 @@
         import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, addDoc, onSnapshot, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Config ---
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'assessment-tool-demo';
-        
+        // Restore user's specific config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDhVIfEev0PhNHlBKL0vAeQy3jwJOsyVFs",
+            authDomain: "myassessmenttool.firebaseapp.com",
+            projectId: "myassessmenttool",
+            storageBucket: "myassessmenttool.firebasestorage.app",
+            messagingSenderId: "165443894580",
+            appId: "1:165443894580:web:16a2d9731f30fd6e107961"
+        };
+        const GEMINI_API_KEY = "AIzaSyAeTm2RBnZ_sE2yLGbZjG2bDnxpM0tq_ak"; 
+        const appId = "myassessmenttool";
+
         // --- Init ---
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -345,9 +354,9 @@
         // --- Auth & Startup ---
         async function initAuth() {
             try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else if (!auth.currentUser) {
+                // 使用者自訂的 Firebase 專案無法使用 Canvas 環境提供的 __initial_auth_token
+                // 因此直接使用匿名登入
+                if (!auth.currentUser) {
                     await signInAnonymously(auth);
                 }
             } catch (error) {

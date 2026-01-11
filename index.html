@@ -442,7 +442,7 @@
         window.activateTool = async (toolId, config = {}) => {
             // 小白板模式選擇
             if (toolId === 'whiteboard' && !config.mode) {
-                if (confirm("是否開啟「繪畫模式」？\n\n按「確定」：學生可用畫筆繪圖\n按「取消」：學生僅能輸入文字")) {
+                if (confirm("是否開啟「繪畫模式」？\n\n按「繪畫」：學生可用畫筆繪圖\n按「文字」：學生僅能輸入文字")) {
                     config.mode = 'draw';
                 } else {
                     config.mode = 'text';
@@ -1015,3 +1015,4 @@
     </script>
 </body>
 </html>
+

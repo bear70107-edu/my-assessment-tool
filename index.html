@@ -123,7 +123,7 @@
                 <!-- Assessment AS Learning -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                     <h2 class="text-gray-400 font-bold text-xs mb-4 uppercase tracking-widest flex items-center gap-2">
-                        <span class="w-2 h-2 bg-blue-500 rounded-full"></span> 學生自評 (As Learning)
+                        <span class="w-2 h-2 bg-blue-500 rounded-full"></span> 學生自評 (Assessment As Learning)
                     </h2>
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         <button onclick="activateTool('selfAssess')" class="tool-btn bg-white hover:bg-blue-50 text-gray-700 hover:text-blue-700 p-4 rounded-xl font-bold text-left border border-gray-200 hover:border-blue-300 shadow-sm">
@@ -144,7 +144,7 @@
                 <!-- Assessment FOR Learning -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                     <h2 class="text-gray-400 font-bold text-xs mb-4 uppercase tracking-widest flex items-center gap-2">
-                        <span class="w-2 h-2 bg-green-500 rounded-full"></span> 課堂檢核 (For Learning)
+                        <span class="w-2 h-2 bg-green-500 rounded-full"></span> 課堂檢核 (Assessment For Learning)
                     </h2>
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         <button onclick="activateTool('fistFive')" class="tool-btn bg-white hover:bg-green-50 text-gray-700 hover:text-green-700 p-4 rounded-xl font-bold text-left border border-gray-200 hover:border-green-300 shadow-sm">
@@ -237,7 +237,7 @@
 
     </main>
 
-    <!-- Modals (Same as before) -->
+    <!-- Modals -->
     <div id="login-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onclick="closeLoginModal()">
         <div class="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl transform transition-all scale-100" onclick="event.stopPropagation()">
             <div class="flex justify-between items-center mb-4">
@@ -247,7 +247,7 @@
                 </button>
             </div>
             <p class="text-sm text-gray-500 mb-3">請輸入教師專用密碼</p>
-            <input type="password" id="teacher-pwd-input" class="w-full p-3 border rounded-xl mb-4 bg-gray-50 focus:bg-white focus:border-blue-500 outline-none transition" placeholder="輸入密碼 (edu)">
+            <input type="password" id="teacher-pwd-input" class="w-full p-3 border rounded-xl mb-4 bg-gray-50 focus:bg-white focus:border-blue-500 outline-none transition" placeholder="請輸入密碼">
             <div class="flex gap-3 justify-end">
                 <button onclick="closeLoginModal()" class="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg transition">取消</button>
                 <button onclick="submitTeacherLogin()" class="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-md transition">確認</button>
@@ -265,7 +265,6 @@
         </div>
     </div>
 
-    <!-- Poll Modal (Updated) -->
     <div id="poll-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-[100] flex items-center justify-center p-4">
         <div class="bg-white p-6 rounded-2xl w-full max-w-md shadow-2xl">
             <h3 class="text-xl font-bold mb-4">設定投票選項</h3>
@@ -313,7 +312,6 @@
         import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, addDoc, onSnapshot, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Config ---
-        // Restore user's specific config
         const firebaseConfig = {
             apiKey: "AIzaSyDhVIfEev0PhNHlBKL0vAeQy3jwJOsyVFs",
             authDomain: "myassessmenttool.firebaseapp.com",
@@ -337,6 +335,7 @@
         let currentToolData = [];
         let unsubscribeResponses = null;
         let unsubscribeRoom = null;
+        let unsubscribeMyResponse = null; // New listener for student's own response
         let isTeacher = false;
         let isInitialized = false;
 
@@ -354,8 +353,6 @@
         // --- Auth & Startup ---
         async function initAuth() {
             try {
-                // 使用者自訂的 Firebase 專案無法使用 Canvas 環境提供的 __initial_auth_token
-                // 因此直接使用匿名登入
                 if (!auth.currentUser) {
                     await signInAnonymously(auth);
                 }
@@ -381,6 +378,7 @@
         window.resetApp = () => {
             if (unsubscribeResponses) unsubscribeResponses();
             if (unsubscribeRoom) unsubscribeRoom();
+            if (unsubscribeMyResponse) unsubscribeMyResponse();
             
             currentRoomId = null;
             mySeat = '';
@@ -458,21 +456,17 @@
         window.activateTool = async (toolId, config = {}) => {
             if (unsubscribeResponses) unsubscribeResponses();
             
-            // 1. Update DB
             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
             await updateDoc(roomRef, { activeTool: toolId, toolConfig: config, timestamp: serverTimestamp() });
 
-            // 2. Switch UI
             document.getElementById('tool-menu').classList.add('hidden');
             document.getElementById('live-dashboard').classList.remove('hidden');
             document.getElementById('current-tool-name').innerText = TOOLS[toolId].name;
             document.getElementById('response-list').innerHTML = '';
             document.getElementById('response-count').innerText = '已回應：0 人';
 
-            // 3. Render Teacher Demo (Top)
             renderToolUI(document.getElementById('teacher-demo-content'), toolId, config, true);
 
-            // 4. Layout for Stats (Bottom)
             const chartBox = document.getElementById('chart-container');
             if (TOOLS[toolId].type === 'chart') {
                 chartBox.parentElement.classList.remove('hidden');
@@ -480,7 +474,6 @@
                 chartBox.parentElement.classList.add('hidden');
             }
 
-            // 5. Listen for responses
             const respRef = collection(db, 'artifacts', appId, 'public', 'data', 'responses');
             const q = query(respRef, where('roomId', '==', currentRoomId));
             
@@ -508,11 +501,10 @@
             }
         };
 
-        // --- Common Tool Rendering (Used for Student & Teacher Demo) ---
+        // --- Common Tool Rendering ---
         function renderToolUI(container, toolId, config, isTeacherDemo = false) {
             let html = '';
             
-            // Generate HTML (Identical to student view)
             if (toolId === 'selfAssess') {
                 html = `<div class="space-y-3">
                     <p class="font-bold mb-2 text-gray-700">學習狀況自評：</p>
@@ -525,9 +517,25 @@
                 </div>`;
             } else if (toolId === 'reflection321') {
                 html = `<div class="space-y-4">
-                    <div><label class="font-bold text-blue-600 block mb-1">3 個我學習到的知識</label><textarea id="${isTeacherDemo?'ref_3_d':'ref_3'}" class="w-full p-3 border rounded-xl bg-gray-50 focus:bg-white" placeholder="我學到了..."></textarea></div>
-                    <div><label class="font-bold text-green-600 block mb-1">2 個我覺得有趣或重要的地方</label><textarea id="${isTeacherDemo?'ref_2_d':'ref_2'}" class="w-full p-3 border rounded-xl bg-gray-50 focus:bg-white" placeholder="我覺得..."></textarea></div>
-                    <div><label class="font-bold text-red-600 block mb-1">1 個仍有疑問或想要探索的問題</label><input type="text" id="${isTeacherDemo?'ref_1_d':'ref_1'}" class="w-full p-3 border rounded-xl bg-gray-50 focus:bg-white" placeholder="我不懂..."></div>
+                    <div>
+                        <label class="font-bold text-blue-600 block mb-1">3 個我學習到的知識</label>
+                        <div class="space-y-2">
+                            <input type="text" id="${isTeacherDemo?'ref_3_0_d':'ref_3_0'}" class="w-full p-2 border rounded-lg bg-gray-50 focus:bg-white" placeholder="1.">
+                            <input type="text" id="${isTeacherDemo?'ref_3_1_d':'ref_3_1'}" class="w-full p-2 border rounded-lg bg-gray-50 focus:bg-white" placeholder="2.">
+                            <input type="text" id="${isTeacherDemo?'ref_3_2_d':'ref_3_2'}" class="w-full p-2 border rounded-lg bg-gray-50 focus:bg-white" placeholder="3.">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="font-bold text-green-600 block mb-1">2 個我覺得有趣或重要的地方</label>
+                        <div class="space-y-2">
+                            <input type="text" id="${isTeacherDemo?'ref_2_0_d':'ref_2_0'}" class="w-full p-2 border rounded-lg bg-gray-50 focus:bg-white" placeholder="1.">
+                            <input type="text" id="${isTeacherDemo?'ref_2_1_d':'ref_2_1'}" class="w-full p-2 border rounded-lg bg-gray-50 focus:bg-white" placeholder="2.">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="font-bold text-red-600 block mb-1">1 個仍有疑問或想要探索的問題</label>
+                        <input type="text" id="${isTeacherDemo?'ref_1_d':'ref_1'}" class="w-full p-3 border rounded-xl bg-gray-50 focus:bg-white" placeholder="我不懂...">
+                    </div>
                 </div>`;
             } else if (toolId === 'oneSentence') {
                 html = `<p class="mb-2 text-gray-700 font-bold">請用一到兩句話說明今日所學</p>
@@ -563,13 +571,13 @@
                 </div>`;
             }
 
-            // Append Submit Button
             const btnText = "送出答案";
             const btnAction = isTeacherDemo ? "alert('這是示範模式，不會送出資料。')" : "submitResponse()";
             const btnColor = isTeacherDemo ? "bg-gray-500 hover:bg-gray-600" : "bg-green-600 hover:bg-green-700";
+            const btnId = isTeacherDemo ? "btn-submit-demo" : "btn-submit";
             
             html += `<div class="mt-6 pt-4 border-t border-gray-100">
-                <button onclick="${btnAction}" class="w-full ${btnColor} text-white font-bold py-3.5 rounded-xl transition shadow text-lg">${btnText}</button>
+                <button id="${btnId}" onclick="${btnAction}" class="w-full ${btnColor} text-white font-bold py-3.5 rounded-xl transition shadow text-lg">${btnText}</button>
                 ${!isTeacherDemo ? '<p id="submit-status" class="text-center text-sm text-gray-400 mt-2 h-5 font-bold"></p>' : ''}
             </div>`;
 
@@ -623,24 +631,45 @@
             const activeEl = document.getElementById('student-active-tool');
             
             if (!data.activeTool) {
+                if (unsubscribeMyResponse) unsubscribeMyResponse(); // Clean up listener when tool closes
                 waitingEl.classList.remove('hidden');
                 activeEl.classList.add('hidden');
                 document.getElementById('student-tool-content').innerHTML = '';
             } else {
                 waitingEl.classList.add('hidden');
                 activeEl.classList.remove('hidden');
-                // Render for Student (isTeacherDemo = false)
                 renderToolUI(document.getElementById('student-tool-content'), data.activeTool, data.toolConfig, false);
+                
+                // Monitor my own response to switch button state
+                // Safe unique ID for student response: roomId + "_" + toolId + "_" + sanitizedSeat
+                // Simple sanitize to avoid path issues
+                const safeSeat = mySeat.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
+                const docId = `${currentRoomId}_${data.activeTool}_${safeSeat}`;
+                const myRef = doc(db, 'artifacts', appId, 'public', 'data', 'responses', docId);
+                
+                if (unsubscribeMyResponse) unsubscribeMyResponse();
+                unsubscribeMyResponse = onSnapshot(myRef, (docSnap) => {
+                    const btn = document.getElementById('btn-submit');
+                    if (btn) {
+                        if (docSnap.exists()) {
+                            btn.innerText = "更新答案";
+                            btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                            btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                        } else {
+                            btn.innerText = "送出答案";
+                            btn.classList.add('bg-green-600', 'hover:bg-green-700');
+                            btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                        }
+                    }
+                });
             }
         }
 
         // --- Shared Logic ---
         window.selectBtn = (el, val) => {
-            // Find parent container to scope querySelector
             const container = el.closest('div').parentElement; 
             container.querySelectorAll('.sel-btn').forEach(b => b.classList.remove('ring-4', 'ring-offset-2', 'ring-blue-400', 'border-blue-600', 'scale-110'));
             el.classList.add('ring-4', 'ring-offset-2', 'ring-blue-400', 'border-blue-600', 'scale-110');
-            // This works because ans_val is in the same container
             container.querySelector('input[type="hidden"]').value = val;
         };
 
@@ -664,7 +693,6 @@
             if (!toolId) return;
 
             let val = null;
-            // Note: In student view, IDs are standard (no suffix)
             if (toolId === 'selfAssess') {
                 const el = document.querySelector('input[name="sa_level"]:checked');
                 const reason = document.getElementById('sa_reason').value.trim();
@@ -672,11 +700,19 @@
                 if(!reason) { resetBtn(); return alert('請輸入原因'); }
                 val = { level: el.value, reason: reason };
             } else if (toolId === 'reflection321') {
-                val = {
-                    p3: document.getElementById('ref_3').value,
-                    p2: document.getElementById('ref_2').value,
-                    p1: document.getElementById('ref_1').value
-                };
+                const p3 = [
+                    document.getElementById('ref_3_0').value.trim(),
+                    document.getElementById('ref_3_1').value.trim(),
+                    document.getElementById('ref_3_2').value.trim()
+                ].filter(s => s);
+                const p2 = [
+                    document.getElementById('ref_2_0').value.trim(),
+                    document.getElementById('ref_2_1').value.trim()
+                ].filter(s => s);
+                const p1 = document.getElementById('ref_1').value.trim();
+                
+                if(p3.length === 0 || p2.length === 0 || !p1) { resetBtn(); return alert('請完整填寫'); }
+                val = { p3, p2, p1 };
             } else if (toolId === 'oneSentence') {
                 val = document.getElementById('os_text').value;
                 if(val.length < 20 || val.length > 50) { resetBtn(); return alert('請符合字數限制'); }
@@ -690,15 +726,21 @@
             }
 
             try {
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'responses'), {
+                // Use setDoc with a deterministic ID to REPLACE existing answer
+                const safeSeat = mySeat.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
+                const docId = `${currentRoomId}_${toolId}_${safeSeat}`;
+                const respRef = doc(db, 'artifacts', appId, 'public', 'data', 'responses', docId);
+                
+                await setDoc(respRef, {
                     roomId: currentRoomId,
                     toolId: toolId,
                     seat: mySeat,
                     value: val,
                     timestamp: serverTimestamp()
                 });
+                
                 document.getElementById('submit-status').innerText = "✅ 傳送成功";
-                btn.innerText = "更新答案";
+                // Button text will be updated by the listener automatically
                 btn.disabled = false;
                 btn.classList.remove('opacity-50', 'cursor-not-allowed');
             } catch (e) {
@@ -714,7 +756,7 @@
             }
         };
 
-        // --- Helper Utils ---
+        // --- Utils & Helpers ---
         window.toggleQR = () => document.getElementById('qr-modal').classList.toggle('hidden');
         window.generateRoomId = () => {
             const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -730,7 +772,18 @@
         window.exportCSV = () => {
             if (currentToolData.length === 0) return alert('無資料可下載');
             const rows = currentToolData.map(d => {
-                let valStr = typeof d.value === 'object' ? JSON.stringify(d.value) : d.value;
+                let valStr = '';
+                if (typeof d.value === 'object') {
+                    if (d.value.p3) { // 3-2-1
+                        valStr = `知識:${d.value.p3.join('/')} | 有趣:${d.value.p2.join('/')} | 疑問:${d.value.p1}`;
+                    } else if (d.value.level) { // Self Assess
+                        valStr = `L${d.value.level}: ${d.value.reason}`;
+                    } else {
+                        valStr = JSON.stringify(d.value);
+                    }
+                } else {
+                    valStr = d.value;
+                }
                 valStr = `"${String(valStr).replace(/"/g, '""')}"`;
                 return `${d.seat},${valStr},${d.timestamp ? new Date(d.timestamp.seconds*1000).toLocaleTimeString() : ''}`;
             });
@@ -751,7 +804,13 @@
                 if (toolId === 'selfAssess') {
                     content = `<span class="font-bold text-blue-600 text-lg">L${d.value.level}</span> <span class="text-gray-600 text-sm ml-2 border-l pl-2">${d.value.reason || ''}</span>`;
                 } else if (toolId === 'reflection321') {
-                    content = `<div class="text-sm space-y-1"><div class="flex"><span class="text-blue-600 font-bold w-6">3:</span><span>${d.value.p3}</span></div><div class="flex"><span class="text-green-600 font-bold w-6">2:</span><span>${d.value.p2}</span></div><div class="flex"><span class="text-red-600 font-bold w-6">1:</span><span>${d.value.p1}</span></div></div>`;
+                    const p3 = d.value.p3 ? d.value.p3.join('、') : '';
+                    const p2 = d.value.p2 ? d.value.p2.join('、') : '';
+                    content = `<div class="text-sm space-y-1">
+                        <div class="flex"><span class="text-blue-600 font-bold w-12 shrink-0">3知識:</span><span>${p3}</span></div>
+                        <div class="flex"><span class="text-green-600 font-bold w-12 shrink-0">2有趣:</span><span>${p2}</span></div>
+                        <div class="flex"><span class="text-red-600 font-bold w-12 shrink-0">1疑問:</span><span>${d.value.p1}</span></div>
+                    </div>`;
                 } else if (toolId === 'whiteboard' || toolId === 'oneSentence') {
                     content = `<div class="cursor-pointer hover:bg-blue-50 p-2 rounded transition text-gray-700" onclick="window.viewDetail('${d.seat}', this.innerText)">${d.value}</div>`;
                 } else if (toolId === 'trafficLight') {

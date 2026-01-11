@@ -16,25 +16,23 @@
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Canvas 繪圖防止滾動 */
+        canvas { touch-action: none; }
     </style>
 </head>
 <body class="flex flex-col min-h-screen text-gray-800">
 
-    <!-- Navigation -->
     <nav class="bg-white border-b px-4 py-3 flex justify-between items-center sticky top-0 z-50 shadow-sm h-16">
-        <!-- Logo / Home Button -->
         <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition" onclick="resetApp()">
             <div class="bg-blue-600 text-white p-2 rounded-lg font-bold text-xl h-10 w-10 flex items-center justify-center">A</div>
             <h1 class="text-lg md:text-xl font-bold text-gray-700 hidden sm:block">課堂形成性評量</h1>
         </div>
         
         <div class="flex items-center gap-3">
-            <!-- Connection Status -->
             <div id="connection-status" class="hidden md:flex items-center gap-2 text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
                 <span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> 連線中...
             </div>
 
-            <!-- Teacher Controls (Hidden by default) -->
             <div id="teacher-nav-controls" class="hidden flex items-center gap-2">
                 <button onclick="toggleQR()" class="bg-gray-700 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-gray-600 transition flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 2V5h1v1H5zM3 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 2v-1h1v1H5zM13 3a1 1 0 00-1 1v3a1 1 0 001 1h3a1 1 0 001-1V4a1 1 0 00-1-1h-3zm1 2v1h1V5h-1z" clip-rule="evenodd" /></svg>
@@ -43,17 +41,14 @@
                 <div class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-bold">教師端</div>
             </div>
 
-            <!-- Teacher Login Button (Visible for Students) -->
             <button id="btn-teacher-login" onclick="attemptTeacherLogin()" class="text-sm font-bold text-gray-500 hover:text-blue-600 px-2 py-1 border border-transparent hover:border-blue-100 rounded transition">
                 教師登入
             </button>
         </div>
     </nav>
 
-    <!-- Main Content -->
     <main class="flex-grow container mx-auto p-4 max-w-6xl relative">
 
-        <!-- 1. STUDENT VIEW: Login (Default View) -->
         <div id="student-login-view" class="w-full max-w-md mx-auto mt-8 fade-in">
             <div class="bg-white p-6 md:p-8 rounded-2xl shadow-lg border border-gray-100">
                 <div class="text-center mb-6">
@@ -77,16 +72,13 @@
             </div>
         </div>
 
-        <!-- 2. STUDENT VIEW: Waiting & Active Tool -->
         <div id="student-workspace" class="hidden w-full max-w-md mx-auto fade-in">
             
-            <!-- Header Info -->
             <div class="flex justify-between items-center mb-4 bg-white p-3 rounded-lg shadow-sm">
                 <span class="text-gray-500 text-sm">教室: <span id="ws-room-code" class="font-mono font-bold text-black">----</span></span>
                 <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-bold">我是 <span id="student-seat-display">--</span></span>
             </div>
 
-            <!-- Waiting State -->
             <div id="student-waiting" class="text-center mt-12">
                 <div class="inline-block p-5 rounded-full bg-white shadow-md mb-6 animate-bounce">
                     <svg class="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -95,7 +87,6 @@
                 <p class="text-gray-400 text-sm mt-2">請看前方大螢幕</p>
             </div>
 
-            <!-- Active Tool Interface -->
             <div id="student-active-tool" class="hidden mt-2">
                 <div class="bg-white p-6 rounded-2xl shadow-lg border-2 border-blue-50">
                     <div class="flex items-center gap-2 mb-4 border-b pb-3">
@@ -104,23 +95,13 @@
                     </div>
                     
                     <div id="student-tool-content" class="min-h-[150px]"></div>
-                    
-                    <div class="mt-6 pt-4 border-t border-gray-100">
-                        <button id="btn-submit" onclick="submitResponse()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 rounded-xl transition shadow active:scale-[0.98] text-lg">
-                            送出答案
-                        </button>
-                        <p id="submit-status" class="text-center text-sm text-gray-400 mt-2 h-5 font-bold"></p>
-                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- 3. TEACHER VIEW -->
         <div id="teacher-view" class="hidden flex flex-col gap-6 fade-in">
             
-            <!-- Tool Menu -->
             <div id="tool-menu" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Assessment AS Learning -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                     <h2 class="text-gray-400 font-bold text-xs mb-4 uppercase tracking-widest flex items-center gap-2">
                         <span class="w-2 h-2 bg-blue-500 rounded-full"></span> 學生自評 (Assessment As Learning)
@@ -141,7 +122,6 @@
                     </div>
                 </div>
 
-                <!-- Assessment FOR Learning -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                     <h2 class="text-gray-400 font-bold text-xs mb-4 uppercase tracking-widest flex items-center gap-2">
                         <span class="w-2 h-2 bg-green-500 rounded-full"></span> 課堂檢核 (Assessment For Learning)
@@ -153,7 +133,7 @@
                         </button>
                         <button onclick="activateTool('whiteboard')" class="tool-btn bg-white hover:bg-green-50 text-gray-700 hover:text-green-700 p-4 rounded-xl font-bold text-left border border-gray-200 hover:border-green-300 shadow-sm">
                             <span class="text-xl block mb-1">⬜</span> 小白板
-                            <span class="block text-xs font-normal text-gray-400 mt-1">短答/文字繪圖</span>
+                            <span class="block text-xs font-normal text-gray-400 mt-1">短答 / 繪圖</span>
                         </button>
                         <button onclick="setupPoll()" class="tool-btn bg-white hover:bg-green-50 text-gray-700 hover:text-green-700 p-4 rounded-xl font-bold text-left border border-gray-200 hover:border-green-300 shadow-sm">
                             <span class="text-xl block mb-1">🗳️</span> 即時投票
@@ -171,10 +151,8 @@
                 </div>
             </div>
 
-            <!-- Live Dashboard -->
             <div id="live-dashboard" class="hidden rounded-2xl flex flex-col overflow-hidden min-h-[600px] fade-in space-y-4">
                 
-                <!-- Dashboard Header -->
                 <div class="bg-white px-6 py-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
                     <div class="flex items-center gap-4">
                         <button onclick="stopActivity()" class="text-gray-500 hover:text-gray-800 transition bg-gray-100 p-2 rounded-full">
@@ -189,6 +167,9 @@
                         </div>
                     </div>
                     <div class="flex gap-2">
+                        <button onclick="clearResponses()" class="bg-white border hover:bg-red-50 text-red-500 border-red-200 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1 shadow-sm transition">
+                            🗑️ 清除
+                        </button>
                         <button onclick="exportCSV()" class="bg-white border hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1 shadow-sm transition">
                             ⬇ 下載 CSV
                         </button>
@@ -198,7 +179,6 @@
                     </div>
                 </div>
 
-                <!-- SECTION 1: Teacher Demo Area (Student View Preview) -->
                 <div class="bg-white p-6 rounded-2xl shadow-lg border-2 border-blue-100">
                     <div class="flex items-center justify-between mb-4 border-b border-gray-100 pb-2">
                         <div class="flex items-center gap-2">
@@ -206,13 +186,10 @@
                         </div>
                     </div>
                     <div id="teacher-demo-content" class="max-w-xl mx-auto">
-                        <!-- Content injected by JS -->
-                    </div>
+                        </div>
                 </div>
 
-                <!-- SECTION 2: Stats & Responses -->
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-6">
-                    <!-- Stats Chart -->
                     <div class="w-full md:w-5/12 flex flex-col">
                         <h3 class="font-bold text-gray-700 mb-2 flex justify-between">
                             <span>即時統計</span>
@@ -223,7 +200,6 @@
                         </div>
                     </div>
 
-                    <!-- Response List -->
                     <div id="list-container" class="w-full md:w-7/12 flex flex-col">
                         <h3 class="font-bold text-gray-700 mb-2">詳細回覆</h3>
                         <div class="flex-grow overflow-y-auto max-h-[500px] no-scrollbar pr-2 bg-gray-50 rounded-xl border border-gray-100 p-2">
@@ -237,7 +213,6 @@
 
     </main>
 
-    <!-- Modals -->
     <div id="login-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onclick="closeLoginModal()">
         <div class="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl transform transition-all scale-100" onclick="event.stopPropagation()">
             <div class="flex justify-between items-center mb-4">
@@ -260,6 +235,9 @@
             <h3 class="text-lg font-bold mb-2 text-gray-700">加入代碼</h3>
             <p id="modal-room-code" class="text-4xl font-mono font-bold text-blue-600 tracking-widest mb-4">----</p>
             <div id="qrcode" class="border-4 border-white shadow-md rounded-lg mb-4 bg-white"></div>
+            
+            <p class="text-blue-600 font-bold text-lg mb-2">已加入人數：<span id="qr-student-count">0</span> 人</p>
+
             <p class="text-gray-400 text-xs mt-1">請學生掃描或輸入代碼</p>
             <button onclick="toggleQR()" class="mt-4 text-sm text-gray-400 hover:text-gray-600 py-2 w-full border-t">關閉視窗</button>
         </div>
@@ -268,6 +246,12 @@
     <div id="poll-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-[100] flex items-center justify-center p-4">
         <div class="bg-white p-6 rounded-2xl w-full max-w-md shadow-2xl">
             <h3 class="text-xl font-bold mb-4">設定投票選項</h3>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-bold text-gray-600 mb-1">題目 (選填)</label>
+                <input type="text" id="poll-question" class="w-full p-2 border rounded-lg bg-gray-50 focus:bg-white transition outline-none focus:border-blue-500" placeholder="例如：哪一個不是太陽系行星？">
+            </div>
+
             <p class="text-sm text-gray-500 mb-4">請輸入選項內容：</p>
             
             <div class="space-y-3 mb-6">
@@ -308,8 +292,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, addDoc, onSnapshot, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, onSnapshot, query, where, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Config ---
         const firebaseConfig = {
@@ -335,7 +319,8 @@
         let currentToolData = [];
         let unsubscribeResponses = null;
         let unsubscribeRoom = null;
-        let unsubscribeMyResponse = null; // New listener for student's own response
+        let unsubscribeMyResponse = null; 
+        let unsubscribeStudentCount = null; // New listener for student count
         let isTeacher = false;
         let isInitialized = false;
 
@@ -379,6 +364,7 @@
             if (unsubscribeResponses) unsubscribeResponses();
             if (unsubscribeRoom) unsubscribeRoom();
             if (unsubscribeMyResponse) unsubscribeMyResponse();
+            if (unsubscribeStudentCount) unsubscribeStudentCount();
             
             currentRoomId = null;
             mySeat = '';
@@ -454,6 +440,15 @@
         };
 
         window.activateTool = async (toolId, config = {}) => {
+            // 小白板模式選擇
+            if (toolId === 'whiteboard' && !config.mode) {
+                if (confirm("是否開啟「繪畫模式」？\n\n按「確定」：學生可用畫筆繪圖\n按「取消」：學生僅能輸入文字")) {
+                    config.mode = 'draw';
+                } else {
+                    config.mode = 'text';
+                }
+            }
+
             if (unsubscribeResponses) unsubscribeResponses();
             
             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
@@ -505,8 +500,15 @@
         function renderToolUI(container, toolId, config, isTeacherDemo = false) {
             let html = '';
             
+            // 即時投票顯示題目
+            if (toolId === 'poll' && config.question) {
+                html += `<div class="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-800 font-bold rounded text-lg">
+                    ${config.question}
+                </div>`;
+            }
+
             if (toolId === 'selfAssess') {
-                html = `<div class="space-y-3">
+                html += `<div class="space-y-3">
                     <p class="font-bold mb-2 text-gray-700">學習狀況自評：</p>
                     ${[{v:1, t:'1. 即使有人幫忙，我也不明白'}, {v:2, t:'2. 如果有人幫忙，我就能明白'}, {v:3, t:'3. 大致上了解，但我需要練習'}, {v:4, t:'4. 已經了解了，我需要更多挑戰'}].map(opt => `
                         <label class="flex items-center p-4 border rounded-xl cursor-pointer hover:bg-blue-50 transition bg-gray-50">
@@ -516,7 +518,7 @@
                     <textarea id="${isTeacherDemo ? 'sa_reason_demo' : 'sa_reason'}" class="w-full mt-3 p-3 border rounded-xl bg-gray-50 focus:bg-white transition outline-none" rows="2" placeholder="原因(必填)..."></textarea>
                 </div>`;
             } else if (toolId === 'reflection321') {
-                html = `<div class="space-y-4">
+                html += `<div class="space-y-4">
                     <div>
                         <label class="font-bold text-blue-600 block mb-1">3 個我學習到的知識</label>
                         <div class="space-y-2">
@@ -538,30 +540,43 @@
                     </div>
                 </div>`;
             } else if (toolId === 'oneSentence') {
-                html = `<p class="mb-2 text-gray-700 font-bold">請用一到兩句話說明今日所學</p>
+                html += `<p class="mb-2 text-gray-700 font-bold">請用一到兩句話說明今日所學</p>
                     <p class="mb-2 text-gray-500 text-xs">字數限制：20 ~ 50 字</p>
                     <textarea id="${isTeacherDemo?'os_text_d':'os_text'}" class="w-full p-3 border-2 rounded-xl h-40 focus:border-blue-500 outline-none text-lg" oninput="checkLen(this)" placeholder="請輸入..."></textarea>
                     <div class="text-right text-sm mt-1"><span id="char-cnt" class="text-red-500 font-bold">0</span> / 50</div>`;
             } else if (toolId === 'fistFive') {
-                html = `<p class="text-gray-500 text-center text-sm mb-4">(1代表非常不理解，5代表非常理解)</p>
+                html += `<p class="text-gray-500 text-center text-sm mb-4">(1代表非常不理解，5代表非常理解)</p>
                 <div class="flex justify-center gap-3 py-4">
                     ${[1,2,3,4,5].map(n => `<button type="button" onclick="selectBtn(this, '${n}')" class="sel-btn w-14 h-14 rounded-full border-2 text-2xl font-bold hover:bg-green-100 transition bg-white shadow-sm">${n}</button>`).join('')}
                 </div><input type="hidden" id="ans_val">`;
             } else if (toolId === 'whiteboard') {
-                html = `<textarea id="${isTeacherDemo?'wb_text_d':'wb_text'}" class="w-full p-4 border-2 rounded-xl h-48 text-lg bg-gray-50 focus:bg-white outline-none" placeholder="請在此作答..."></textarea>`;
+                // 小白板根據模式渲染
+                if (config.mode === 'draw') {
+                    const canvasId = isTeacherDemo ? 'wb_canvas_d' : 'wb_canvas';
+                    html += `<div class="border-2 border-dashed border-gray-300 rounded-xl bg-white overflow-hidden touch-none relative">
+                        <canvas id="${canvasId}" class="w-full h-[300px] cursor-crosshair block" width="600" height="600"></canvas>
+                        <div class="absolute top-2 right-2 flex gap-2">
+                            <button type="button" onclick="clearCanvas('${canvasId}')" class="bg-white/80 p-2 rounded-lg shadow text-xs font-bold border hover:bg-red-50 text-red-500">清除重畫</button>
+                        </div>
+                    </div>
+                    <p class="text-center text-xs text-gray-400 mt-2">請在上方框框內繪畫</p>`;
+                    setTimeout(() => initCanvas(canvasId), 100);
+                } else {
+                    html += `<textarea id="${isTeacherDemo?'wb_text_d':'wb_text'}" class="w-full p-4 border-2 rounded-xl h-48 text-lg bg-gray-50 focus:bg-white outline-none" placeholder="請在此作答..."></textarea>`;
+                }
             } else if (toolId === 'poll') {
                 const opts = config.options || ['A','B','C','D'];
-                html = `<div class="grid grid-cols-2 gap-3">
+                html += `<div class="grid grid-cols-2 gap-3">
                     ${opts.map(o => `<button type="button" onclick="selectBtn(this, '${o}')" class="sel-btn p-5 border-2 rounded-2xl text-xl font-bold hover:bg-blue-50 transition break-words bg-white shadow-sm">${o}</button>`).join('')}
                 </div><input type="hidden" id="ans_val">`;
             } else if (toolId === 'trafficLight') {
-                html = `<div class="space-y-3">
+                html += `<div class="space-y-3">
                     <button type="button" onclick="selectBtn(this, 'Green')" class="sel-btn w-full p-4 border-2 rounded-xl text-lg font-bold bg-green-50 border-green-200 text-green-700 hover:bg-green-100 transition shadow-sm">🟢 綠燈 (懂了)</button>
                     <button type="button" onclick="selectBtn(this, 'Yellow')" class="sel-btn w-full p-4 border-2 rounded-xl text-lg font-bold bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100 transition shadow-sm">🟡 黃燈 (不確定)</button>
                     <button type="button" onclick="selectBtn(this, 'Red')" class="sel-btn w-full p-4 border-2 rounded-xl text-lg font-bold bg-red-50 border-red-200 text-red-700 hover:bg-red-100 transition shadow-sm">🔴 紅燈 (不懂)</button>
                 </div><input type="hidden" id="ans_val">`;
             } else if (toolId === 'numberLine') {
-                html = `<div class="pt-8 pb-2 px-2">
+                html += `<div class="pt-8 pb-2 px-2">
                     <input type="range" id="${isTeacherDemo?'nl_range_d':'nl_range'}" min="1" max="10" value="5" class="w-full h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" oninput="this.nextElementSibling.querySelector('.val-disp').innerText = this.value">
                     <div class="flex justify-between mt-8 text-gray-500 font-bold text-sm">
                         <span>1 (沒信心)</span>
@@ -587,6 +602,7 @@
         window.setupPoll = () => document.getElementById('poll-modal').classList.remove('hidden');
         
         window.startPoll = () => {
+            const question = document.getElementById('poll-question').value.trim();
             const inputs = [
                 document.getElementById('poll-opt-0').value,
                 document.getElementById('poll-opt-1').value,
@@ -596,17 +612,24 @@
             const options = inputs.map(s => s.trim()).filter(s => s);
             if (options.length < 2) return alert('請至少輸入兩個選項');
             document.getElementById('poll-modal').classList.add('hidden');
-            activateTool('poll', { options });
+            activateTool('poll', { options, question });
         };
 
         // --- Student Logic ---
-        window.studentLogin = () => {
+        window.studentLogin = async () => {
             const code = document.getElementById('join-code').value.trim().toUpperCase();
             const seat = document.getElementById('join-seat').value.trim();
             if (code.length < 3 || !seat) return alert('請輸入完整資訊');
 
             currentRoomId = code;
             mySeat = seat;
+
+            // 記錄學生加入以統計人數
+            const safeSeat = mySeat.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
+            const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId, 'students', safeSeat);
+            try {
+                await setDoc(studentRef, { seat: mySeat, joinedAt: serverTimestamp() });
+            } catch(e) { console.log("Join stats error", e); }
 
             document.getElementById('student-login-view').classList.add('hidden');
             document.getElementById('student-workspace').classList.remove('hidden');
@@ -631,7 +654,7 @@
             const activeEl = document.getElementById('student-active-tool');
             
             if (!data.activeTool) {
-                if (unsubscribeMyResponse) unsubscribeMyResponse(); // Clean up listener when tool closes
+                if (unsubscribeMyResponse) unsubscribeMyResponse(); 
                 waitingEl.classList.remove('hidden');
                 activeEl.classList.add('hidden');
                 document.getElementById('student-tool-content').innerHTML = '';
@@ -640,9 +663,7 @@
                 activeEl.classList.remove('hidden');
                 renderToolUI(document.getElementById('student-tool-content'), data.activeTool, data.toolConfig, false);
                 
-                // Monitor my own response to switch button state
-                // Safe unique ID for student response: roomId + "_" + toolId + "_" + sanitizedSeat
-                // Simple sanitize to avoid path issues
+                // Monitor my own response
                 const safeSeat = mySeat.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
                 const docId = `${currentRoomId}_${data.activeTool}_${safeSeat}`;
                 const myRef = doc(db, 'artifacts', appId, 'public', 'data', 'responses', docId);
@@ -678,6 +699,61 @@
             const cnt = el.parentElement.querySelector('#char-cnt');
             cnt.innerText = len;
             cnt.className = (len >= 20 && len <= 50) ? 'text-green-600 font-bold' : 'text-red-500 font-bold';
+        };
+
+        // --- Canvas Helpers ---
+        window.initCanvas = (id) => {
+            const canvas = document.getElementById(id);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            let isDrawing = false;
+            
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#000';
+
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+
+            const getPos = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return { x: clientX - rect.left, y: clientY - rect.top };
+            };
+
+            const start = (e) => {
+                if (e.cancelable) e.preventDefault(); 
+                isDrawing = true;
+                const pos = getPos(e);
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+            };
+
+            const draw = (e) => {
+                if (!isDrawing) return;
+                if (e.cancelable) e.preventDefault();
+                const pos = getPos(e);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            };
+
+            const end = () => { isDrawing = false; };
+
+            canvas.addEventListener('mousedown', start);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', end);
+            canvas.addEventListener('mouseleave', end);
+            canvas.addEventListener('touchstart', start, {passive: false});
+            canvas.addEventListener('touchmove', draw, {passive: false});
+            canvas.addEventListener('touchend', end);
+        };
+
+        window.clearCanvas = (id) => {
+            const canvas = document.getElementById(id);
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
         };
 
         window.submitResponse = async () => {
@@ -717,7 +793,13 @@
                 val = document.getElementById('os_text').value;
                 if(val.length < 20 || val.length > 50) { resetBtn(); return alert('請符合字數限制'); }
             } else if (toolId === 'whiteboard') {
-                val = document.getElementById('wb_text').value;
+                const textArea = document.getElementById('wb_text');
+                const canvas = document.getElementById('wb_canvas');
+                if (textArea) {
+                    val = textArea.value;
+                } else if (canvas) {
+                    val = canvas.toDataURL('image/png', 0.5);
+                }
             } else if (toolId === 'numberLine') {
                 val = document.getElementById('nl_range').value;
             } else {
@@ -726,7 +808,6 @@
             }
 
             try {
-                // Use setDoc with a deterministic ID to REPLACE existing answer
                 const safeSeat = mySeat.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
                 const docId = `${currentRoomId}_${toolId}_${safeSeat}`;
                 const respRef = doc(db, 'artifacts', appId, 'public', 'data', 'responses', docId);
@@ -740,7 +821,6 @@
                 });
                 
                 document.getElementById('submit-status').innerText = "✅ 傳送成功";
-                // Button text will be updated by the listener automatically
                 btn.disabled = false;
                 btn.classList.remove('opacity-50', 'cursor-not-allowed');
             } catch (e) {
@@ -757,7 +837,24 @@
         };
 
         // --- Utils & Helpers ---
-        window.toggleQR = () => document.getElementById('qr-modal').classList.toggle('hidden');
+        window.toggleQR = () => {
+            const el = document.getElementById('qr-modal');
+            el.classList.toggle('hidden');
+            
+            if (!el.classList.contains('hidden') && currentRoomId) {
+                const studentsRef = collection(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId, 'students');
+                if (unsubscribeStudentCount) unsubscribeStudentCount();
+                unsubscribeStudentCount = onSnapshot(studentsRef, (snap) => {
+                    document.getElementById('qr-student-count').innerText = snap.size;
+                });
+            } else {
+                if (unsubscribeStudentCount) {
+                    unsubscribeStudentCount();
+                    unsubscribeStudentCount = null;
+                }
+            }
+        };
+
         window.generateRoomId = () => {
             const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
             let res = '';
@@ -766,21 +863,60 @@
         }
         window.viewDetail = (seat, txt) => {
             document.getElementById('view-seat').innerText = `${seat} 的回答`;
-            document.getElementById('view-content').innerText = txt;
+            const contentEl = document.getElementById('view-content');
+            
+            if (txt.startsWith('IMAGE:')) {
+                const src = txt.substring(6);
+                contentEl.innerHTML = `<img src="${src}" class="w-full rounded border shadow-sm" />`;
+            } else {
+                contentEl.innerText = txt;
+            }
             document.getElementById('view-modal').classList.remove('hidden');
         };
+        
+        // 清除功能
+        window.clearResponses = async () => {
+            if (!currentRoomId) return;
+            if (currentToolData.length === 0) return alert("目前沒有資料可清除");
+            if (!confirm('確定要清除目前所有學生的回應嗎？此動作無法復原。')) return;
+
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
+            const roomSnap = await getDoc(roomRef);
+            const activeTool = roomSnap.data()?.activeTool;
+
+            if (!activeTool) return;
+
+            const batch = writeBatch(db);
+            currentToolData.forEach(d => {
+                const safeSeat = d.seat.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
+                const docId = `${currentRoomId}_${activeTool}_${safeSeat}`;
+                const ref = doc(db, 'artifacts', appId, 'public', 'data', 'responses', docId);
+                batch.delete(ref);
+            });
+
+            try {
+                await batch.commit();
+                alert("已清除所有回應");
+            } catch (e) {
+                console.error(e);
+                alert("清除失敗，請重試");
+            }
+        };
+
         window.exportCSV = () => {
             if (currentToolData.length === 0) return alert('無資料可下載');
             const rows = currentToolData.map(d => {
                 let valStr = '';
                 if (typeof d.value === 'object') {
-                    if (d.value.p3) { // 3-2-1
+                    if (d.value.p3) { 
                         valStr = `知識:${d.value.p3.join('/')} | 有趣:${d.value.p2.join('/')} | 疑問:${d.value.p1}`;
-                    } else if (d.value.level) { // Self Assess
+                    } else if (d.value.level) { 
                         valStr = `L${d.value.level}: ${d.value.reason}`;
                     } else {
                         valStr = JSON.stringify(d.value);
                     }
+                } else if (typeof d.value === 'string' && d.value.startsWith('data:image')) {
+                    valStr = "[圖片資料]";
                 } else {
                     valStr = d.value;
                 }
@@ -812,7 +948,13 @@
                         <div class="flex"><span class="text-red-600 font-bold w-12 shrink-0">1疑問:</span><span>${d.value.p1}</span></div>
                     </div>`;
                 } else if (toolId === 'whiteboard' || toolId === 'oneSentence') {
-                    content = `<div class="cursor-pointer hover:bg-blue-50 p-2 rounded transition text-gray-700" onclick="window.viewDetail('${d.seat}', this.innerText)">${d.value}</div>`;
+                    if (d.value && d.value.startsWith && d.value.startsWith('data:image')) {
+                        content = `<div class="cursor-pointer border rounded bg-gray-50" onclick="window.viewDetail('${d.seat}', 'IMAGE:${d.value}')">
+                            <img src="${d.value}" class="max-h-24 mx-auto" />
+                        </div>`;
+                    } else {
+                        content = `<div class="cursor-pointer hover:bg-blue-50 p-2 rounded transition text-gray-700" onclick="window.viewDetail('${d.seat}', this.innerText)">${d.value}</div>`;
+                    }
                 } else if (toolId === 'trafficLight') {
                     const colorMap = { 'Red': '🔴 紅', 'Yellow': '🟡 黃', 'Green': '🟢 綠' };
                     content = `<span class="font-bold text-lg">${colorMap[d.value] || d.value}</span>`;

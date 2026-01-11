@@ -345,7 +345,8 @@
             'reflection321': { name: '3-2-1 學習反思', type: 'text' },
             'oneSentence': { name: '一句話理解', type: 'text' },
             'fistFive': { name: '從一到五', type: 'chart' },
-            'whiteboard': { name: '小白板', type: 'text' },
+            'whiteboard_text': { name: '小白板 (文字)', type: 'text' },
+            'whiteboard_draw': { name: '小白板 (繪圖)', type: 'text' },
             'poll': { name: '即時投票', type: 'chart' },
             'trafficLight': { name: '紅綠燈', type: 'chart' },
             'numberLine': { name: '數線分布', type: 'chart' }
@@ -518,15 +519,13 @@
         };
 
         window.activateTool = async (toolId, config = {}) => {
-            if (toolId === 'whiteboard' && !config.mode) {
+            if (toolId === 'whiteboard') {
                  showModal("模式選擇", "請選擇學生作答的方式：", 
                     () => {
-                        config.mode = 'draw';
-                        proceedActivateTool(toolId, config);
+                        proceedActivateTool('whiteboard_draw', config);
                     }, 
                     () => {
-                        config.mode = 'text';
-                        proceedActivateTool(toolId, config);
+                        proceedActivateTool('whiteboard_text', config);
                     },
                     "繪畫模式",
                     "文字模式"
@@ -657,21 +656,18 @@
                 <div class="flex justify-center gap-3 py-4">
                     ${[1,2,3,4,5].map(n => `<button type="button" onclick="selectBtn(this, '${n}')" class="sel-btn w-14 h-14 rounded-full border-2 text-2xl font-bold hover:bg-green-100 transition bg-white shadow-sm">${n}</button>`).join('')}
                 </div><input type="hidden" id="ans_val">`;
-            } else if (toolId === 'whiteboard') {
-                // 小白板根據模式渲染
-                if (config.mode === 'draw') {
-                    const canvasId = isTeacherDemo ? 'wb_canvas_d' : 'wb_canvas';
-                    html += `<div class="border-2 border-dashed border-gray-300 rounded-xl bg-white overflow-hidden touch-none relative">
-                        <canvas id="${canvasId}" class="w-full h-[300px] cursor-crosshair block" width="600" height="600"></canvas>
-                        <div class="absolute top-2 right-2 flex gap-2">
-                            <button type="button" onclick="clearCanvas('${canvasId}')" class="bg-white/80 p-2 rounded-lg shadow text-xs font-bold border hover:bg-red-50 text-red-500">清除重畫</button>
-                        </div>
+            } else if (toolId === 'whiteboard_draw') {
+                const canvasId = isTeacherDemo ? 'wb_canvas_d' : 'wb_canvas';
+                html += `<div class="border-2 border-dashed border-gray-300 rounded-xl bg-white overflow-hidden touch-none relative">
+                    <canvas id="${canvasId}" class="w-full h-[300px] cursor-crosshair block" width="600" height="600"></canvas>
+                    <div class="absolute top-2 right-2 flex gap-2">
+                        <button type="button" onclick="clearCanvas('${canvasId}')" class="bg-white/80 p-2 rounded-lg shadow text-xs font-bold border hover:bg-red-50 text-red-500">清除重畫</button>
                     </div>
-                    <p class="text-center text-xs text-gray-400 mt-2">請在上方框框內繪畫</p>`;
-                    setTimeout(() => initCanvas(canvasId), 100);
-                } else {
-                    html += `<textarea id="${isTeacherDemo?'wb_text_d':'wb_text'}" class="w-full p-4 border-2 rounded-xl h-48 text-lg bg-gray-50 focus:bg-white outline-none" placeholder="請在此作答..."></textarea>`;
-                }
+                </div>
+                <p class="text-center text-xs text-gray-400 mt-2">請在上方框框內繪畫</p>`;
+                setTimeout(() => initCanvas(canvasId), 100);
+            } else if (toolId === 'whiteboard_text') {
+                html += `<textarea id="${isTeacherDemo?'wb_text_d':'wb_text'}" class="w-full p-4 border-2 rounded-xl h-48 text-lg bg-gray-50 focus:bg-white outline-none" placeholder="請在此作答..."></textarea>`;
             } else if (toolId === 'poll') {
                 const opts = config.options || ['A','B','C','D'];
                 html += `<div class="grid grid-cols-2 gap-3">
@@ -923,12 +919,14 @@
                 } else if (toolId === 'oneSentence') {
                     val = document.getElementById('os_text').value;
                     if(val.length < 20 || val.length > 50) { resetBtn(); return showCustomAlert('請符合字數限制'); }
-                } else if (toolId === 'whiteboard') {
+                } else if (toolId === 'whiteboard_text') {
                     const textArea = document.getElementById('wb_text');
-                    const canvas = document.getElementById('wb_canvas');
                     if (textArea) {
                         val = textArea.value;
-                    } else if (canvas) {
+                    }
+                } else if (toolId === 'whiteboard_draw') {
+                    const canvas = document.getElementById('wb_canvas');
+                    if (canvas) {
                         val = canvas.toDataURL('image/png', 0.5);
                     }
                 } else if (toolId === 'numberLine') {
@@ -1085,14 +1083,12 @@
                         <div class="flex"><span class="text-green-600 font-bold w-12 shrink-0">2有趣:</span><span>${p2}</span></div>
                         <div class="flex"><span class="text-red-600 font-bold w-12 shrink-0">1疑問:</span><span>${d.value.p1}</span></div>
                     </div>`;
-                } else if (toolId === 'whiteboard' || toolId === 'oneSentence') {
-                    if (d.value && d.value.startsWith && d.value.startsWith('data:image')) {
-                        content = `<div class="cursor-pointer border rounded bg-gray-50" onclick="window.viewDetail('${d.seat}', 'IMAGE:${d.value}')">
-                            <img src="${d.value}" class="max-h-24 mx-auto" />
-                        </div>`;
-                    } else {
+                } else if (toolId === 'whiteboard_draw') {
+                     content = `<div class="cursor-pointer border rounded bg-gray-50" onclick="window.viewDetail('${d.seat}', 'IMAGE:${d.value}')">
+                        <img src="${d.value}" class="max-h-24 mx-auto" />
+                    </div>`;
+                } else if (toolId === 'whiteboard_text' || toolId === 'oneSentence') {
                         content = `<div class="cursor-pointer hover:bg-blue-50 p-2 rounded transition text-gray-700" onclick="window.viewDetail('${d.seat}', this.innerText)">${d.value}</div>`;
-                    }
                 } else if (toolId === 'trafficLight') {
                     const colorMap = { 'Red': '🔴 紅', 'Yellow': '🟡 黃', 'Green': '🟢 綠' };
                     content = `<span class="font-bold text-lg">${colorMap[d.value] || d.value}</span>`;

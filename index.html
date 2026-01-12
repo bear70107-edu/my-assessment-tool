@@ -139,6 +139,10 @@
                             <span class="text-xl block mb-1">🗳️</span> 即時投票
                             <span class="block text-xs font-normal text-gray-400 mt-1">自訂選項 ABCD</span>
                         </button>
+                        <button onclick="setupTrueFalse()" class="tool-btn bg-white hover:bg-green-50 text-gray-700 hover:text-green-700 p-4 rounded-xl font-bold text-left border border-gray-200 hover:border-green-300 shadow-sm">
+                            <span class="text-xl block mb-1">⭕❌</span> 是非題
+                            <span class="block text-xs font-normal text-gray-400 mt-1">快速判斷 O / X</span>
+                        </button>
                         <button onclick="activateTool('trafficLight')" class="tool-btn bg-white hover:bg-green-50 text-gray-700 hover:text-green-700 p-4 rounded-xl font-bold text-left border border-gray-200 hover:border-green-300 shadow-sm">
                             <span class="text-xl block mb-1">🚦</span> 紅綠燈
                             <span class="block text-xs font-normal text-gray-400 mt-1">即時求助訊號</span>
@@ -281,6 +285,22 @@
         </div>
     </div>
 
+    <div id="tf-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-[100] flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-2xl w-full max-w-md shadow-2xl">
+            <h3 class="text-xl font-bold mb-4">設定是非題</h3>
+            
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-gray-600 mb-1">題目 (選填)</label>
+                <input type="text" id="tf-question" class="w-full p-2 border rounded-lg bg-gray-50 focus:bg-white transition outline-none focus:border-blue-500" placeholder="例如：地球是圓的嗎？">
+            </div>
+
+            <div class="flex gap-3 justify-end">
+                <button onclick="document.getElementById('tf-modal').classList.add('hidden')" class="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg">取消</button>
+                <button onclick="startTrueFalse()" class="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-md">開始活動</button>
+            </div>
+        </div>
+    </div>
+
     <div id="view-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onclick="this.classList.add('hidden')">
         <div class="bg-white p-8 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-2xl" onclick="event.stopPropagation()">
             <div class="flex justify-between items-center mb-4 border-b pb-2">
@@ -348,6 +368,7 @@
             'whiteboard_text': { name: '小白板 (文字)', type: 'text' },
             'whiteboard_draw': { name: '小白板 (繪圖)', type: 'text' },
             'poll': { name: '即時投票', type: 'chart' },
+            'trueFalse': { name: '是非題', type: 'chart' },
             'trafficLight': { name: '紅綠燈', type: 'chart' },
             'numberLine': { name: '數線分布', type: 'chart' }
         };
@@ -608,7 +629,7 @@
             let html = '';
             
             // 即時投票顯示題目
-            if (toolId === 'poll' && config.question) {
+            if ((toolId === 'poll' || toolId === 'trueFalse') && config.question) {
                 html += `<div class="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-800 font-bold rounded text-lg">
                     ${config.question}
                 </div>`;
@@ -643,7 +664,7 @@
                     </div>
                     <div>
                         <label class="font-bold text-red-600 block mb-1">1 個仍有疑問或想要探索的問題</label>
-                        <input type="text" id="${isTeacherDemo?'ref_1_d':'ref_1'}" class="w-full p-3 border rounded-xl bg-gray-50 focus:bg-white" placeholder="1.">
+                        <input type="text" id="${isTeacherDemo?'ref_1_d':'ref_1'}" class="w-full p-3 border rounded-xl bg-gray-50 focus:bg-white" placeholder="我不懂...">
                     </div>
                 </div>`;
             } else if (toolId === 'oneSentence') {
@@ -672,6 +693,11 @@
                 const opts = config.options || ['A','B','C','D'];
                 html += `<div class="grid grid-cols-2 gap-3">
                     ${opts.map(o => `<button type="button" onclick="selectBtn(this, '${o}')" class="sel-btn p-5 border-2 rounded-2xl text-xl font-bold hover:bg-blue-50 transition break-words bg-white shadow-sm">${o}</button>`).join('')}
+                </div><input type="hidden" id="ans_val">`;
+            } else if (toolId === 'trueFalse') {
+                html += `<div class="grid grid-cols-2 gap-4 h-48">
+                    <button type="button" onclick="selectBtn(this, 'O')" class="sel-btn h-full border-4 border-green-100 rounded-3xl text-6xl font-black text-green-500 hover:bg-green-50 hover:border-green-300 transition flex items-center justify-center shadow-sm bg-white">⭕</button>
+                    <button type="button" onclick="selectBtn(this, 'X')" class="sel-btn h-full border-4 border-red-100 rounded-3xl text-6xl font-black text-red-500 hover:bg-red-50 hover:border-red-300 transition flex items-center justify-center shadow-sm bg-white">❌</button>
                 </div><input type="hidden" id="ans_val">`;
             } else if (toolId === 'trafficLight') {
                 html += `<div class="space-y-3">
@@ -704,6 +730,10 @@
         }
 
         window.setupPoll = () => document.getElementById('poll-modal').classList.remove('hidden');
+        window.setupTrueFalse = () => {
+            document.getElementById('tf-question').value = '';
+            document.getElementById('tf-modal').classList.remove('hidden');
+        };
         
         window.startPoll = () => {
             const question = document.getElementById('poll-question').value.trim();
@@ -717,6 +747,12 @@
             if (options.length < 2) return showCustomAlert('請至少輸入兩個選項');
             document.getElementById('poll-modal').classList.add('hidden');
             activateTool('poll', { options, question });
+        };
+
+        window.startTrueFalse = () => {
+            const question = document.getElementById('tf-question').value.trim();
+            document.getElementById('tf-modal').classList.add('hidden');
+            activateTool('trueFalse', { question });
         };
 
         // --- Student Logic ---
@@ -1119,6 +1155,12 @@
                 labels = Object.keys(map).sort();
                 counts = labels.map(k => map[k]);
                 colors = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6'];
+            } else if (toolId === 'trueFalse') {
+                let map = {'O':0, 'X':0};
+                data.forEach(d => map[d.value] = (map[d.value] || 0) + 1);
+                labels = ['O', 'X'];
+                counts = [map['O'], map['X']];
+                colors = ['#10B981', '#EF4444'];
             } else if (toolId === 'trafficLight') {
                 let map = {'Red':0, 'Yellow':0, 'Green':0};
                 data.forEach(d => map[d.value] = (map[d.value] || 0) + 1);
@@ -1139,7 +1181,7 @@
                 colors = '#6366F1';
             }
             if (chartInstance) chartInstance.destroy();
-            const isPie = (toolId === 'trafficLight' || toolId === 'poll');
+            const isPie = (toolId === 'trafficLight' || toolId === 'poll' || toolId === 'trueFalse');
             chartInstance = new Chart(ctx, {
                 type: isPie ? 'doughnut' : 'bar',
                 data: { labels: labels, datasets: [{ label: '人數', data: counts, backgroundColor: colors, borderWidth: 1, borderRadius: 4 }] },
@@ -1149,4 +1191,3 @@
     </script>
 </body>
 </html>
-

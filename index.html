@@ -18,6 +18,9 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         /* Canvas 繪圖防止滾動 */
         canvas { touch-action: none; }
+        /* Star Rating */
+        .star-rating span { cursor: pointer; color: #d1d5db; transition: color 0.2s; }
+        .star-rating span.active { color: #f59e0b; }
     </style>
 </head>
 <body class="flex flex-col min-h-screen text-gray-800">
@@ -115,8 +118,12 @@
                             <span class="text-xl block mb-1">💡</span> 3-2-1 反思
                             <span class="block text-xs font-normal text-gray-400 mt-1">收斂學習重點</span>
                         </button>
+                        <button onclick="setupPerformanceReview()" class="tool-btn bg-white hover:bg-blue-50 text-gray-700 hover:text-blue-700 p-4 rounded-xl font-bold text-left border border-gray-200 hover:border-blue-300 shadow-sm">
+                            <span class="text-xl block mb-1">📝</span> 上課表現自評表
+                            <span class="block text-xs font-normal text-gray-400 mt-1">心情、專注度、反思</span>
+                        </button>
                         <button onclick="activateTool('oneSentence')" class="tool-btn bg-white hover:bg-blue-50 text-gray-700 hover:text-blue-700 p-4 rounded-xl font-bold text-left border border-gray-200 hover:border-blue-300 shadow-sm">
-                            <span class="text-xl block mb-1">📝</span> 一句話理解
+                            <span class="text-xl block mb-1">💬</span> 一句話理解
                             <span class="block text-xs font-normal text-gray-400 mt-1">20-50字摘要</span>
                         </button>
                     </div>
@@ -301,6 +308,71 @@
         </div>
     </div>
 
+    <!-- 自評表設定 Modal -->
+    <div id="perf-review-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-[100] flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-2xl w-full max-w-xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-bold mb-4 text-gray-800">設定自評表問題</h3>
+            <p class="text-sm text-gray-500 mb-4">勾選要詢問的問題，並可修改文字：</p>
+            
+            <div class="space-y-4">
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="pr-check-1" class="w-5 h-5 accent-blue-600" checked>
+                    <div class="flex-grow">
+                        <label class="block text-sm font-bold text-gray-600 mb-1">心情 (單選)</label>
+                        <input type="text" id="pr-q1" class="w-full p-2 border rounded bg-gray-50" value="今天我在課堂上的心情">
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="pr-check-2" class="w-5 h-5 accent-blue-600" checked>
+                    <div class="flex-grow">
+                        <label class="block text-sm font-bold text-gray-600 mb-1">準時 (是非)</label>
+                        <input type="text" id="pr-q2" class="w-full p-2 border rounded bg-gray-50" value="今天我有準時到課">
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="pr-check-3" class="w-5 h-5 accent-blue-600" checked>
+                    <div class="flex-grow">
+                        <label class="block text-sm font-bold text-gray-600 mb-1">專注度 (五星)</label>
+                        <input type="text" id="pr-q3" class="w-full p-2 border rounded bg-gray-50" value="我在課堂上專心聽講">
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="pr-check-4" class="w-5 h-5 accent-blue-600" checked>
+                    <div class="flex-grow">
+                        <label class="block text-sm font-bold text-gray-600 mb-1">任務完成 (五星)</label>
+                        <input type="text" id="pr-q4" class="w-full p-2 border rounded bg-gray-50" value="我確實完成老師交代的任務">
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="pr-check-5" class="w-5 h-5 accent-blue-600" checked>
+                    <div class="flex-grow">
+                        <label class="block text-sm font-bold text-gray-600 mb-1">滿意表現 (簡答)</label>
+                        <input type="text" id="pr-q5" class="w-full p-2 border rounded bg-gray-50" value="我今天最滿意的表現是">
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="pr-check-6" class="w-5 h-5 accent-blue-600" checked>
+                    <div class="flex-grow">
+                        <label class="block text-sm font-bold text-gray-600 mb-1">待改進 (簡答)</label>
+                        <input type="text" id="pr-q6" class="w-full p-2 border rounded bg-gray-50" value="我覺得我可以再進步的地方是">
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="pr-check-7" class="w-5 h-5 accent-blue-600">
+                    <div class="flex-grow">
+                        <label class="block text-sm font-bold text-gray-600 mb-1">其他 (簡答)</label>
+                        <input type="text" id="pr-q7" class="w-full p-2 border rounded bg-gray-50" value="其他">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-3 justify-end mt-6">
+                <button onclick="document.getElementById('perf-review-modal').classList.add('hidden')" class="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg">取消</button>
+                <button onclick="startPerformanceReview()" class="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-md">開始活動</button>
+            </div>
+        </div>
+    </div>
+
     <div id="view-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onclick="this.classList.add('hidden')">
         <div class="bg-white p-8 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-2xl" onclick="event.stopPropagation()">
             <div class="flex justify-between items-center mb-4 border-b pb-2">
@@ -363,6 +435,7 @@
         const TOOLS = {
             'selfAssess': { name: '自我評量量表', type: 'chart' },
             'reflection321': { name: '3-2-1 學習反思', type: 'text' },
+            'performanceReview': { name: '上課表現自評表', type: 'complex' },
             'oneSentence': { name: '一句話理解', type: 'text' },
             'fistFive': { name: '從一到五', type: 'chart' },
             'whiteboard_text': { name: '小白板 (文字)', type: 'text' },
@@ -569,7 +642,7 @@
             renderToolUI(document.getElementById('teacher-demo-content'), toolId, config, true);
 
             const chartBox = document.getElementById('chart-container');
-            if (TOOLS[toolId].type === 'chart') {
+            if (TOOLS[toolId].type === 'chart' || toolId === 'performanceReview') {
                 chartBox.parentElement.classList.remove('hidden');
             } else {
                 chartBox.parentElement.classList.add('hidden');
@@ -667,6 +740,69 @@
                         <input type="text" id="${isTeacherDemo?'ref_1_d':'ref_1'}" class="w-full p-3 border rounded-xl bg-gray-50 focus:bg-white" placeholder="我不懂...">
                     </div>
                 </div>`;
+            } else if (toolId === 'performanceReview') {
+                // Dynamically render selected questions with renumbering
+                const prefix = isTeacherDemo ? 'demo_' : '';
+                html += `<div class="space-y-5 text-sm">`;
+                
+                if (config.questions && Array.isArray(config.questions)) {
+                    config.questions.forEach((q, index) => {
+                        const num = index + 1;
+                        if (q.id === 'mood') {
+                            html += `<div class="p-3 bg-gray-50 rounded-xl border">
+                                <label class="font-bold text-gray-700 block mb-2">${num}. ${q.label}</label>
+                                <div class="flex flex-wrap gap-2">
+                                    ${['😊 開心', '😌 平靜', '😠 生氣', '😢 難過', '😫 疲累', '🤩 興奮'].map(m => `<label class="inline-flex items-center bg-white border px-3 py-1 rounded-full cursor-pointer"><input type="radio" name="${prefix}pr_mood" value="${m}" class="mr-1"> ${m}</label>`).join('')}
+                                    <label class="inline-flex items-center bg-white border px-3 py-1 rounded-full"><input type="radio" name="${prefix}pr_mood" value="other" class="mr-1"> 其他：<input type="text" id="${prefix}pr_mood_other" class="border-b w-20 outline-none ml-1 text-xs" onclick="this.previousElementSibling.checked=true"></label>
+                                </div>
+                            </div>`;
+                        } else if (q.id === 'ontime') {
+                            html += `<div class="p-3 bg-gray-50 rounded-xl border">
+                                <label class="font-bold text-gray-700 block mb-2">${num}. ${q.label}</label>
+                                <div class="flex gap-4">
+                                    <label class="inline-flex items-center cursor-pointer"><input type="radio" name="${prefix}pr_ontime" value="是" class="w-4 h-4 text-green-600"> <span class="ml-1">是</span></label>
+                                    <label class="inline-flex items-center cursor-pointer"><input type="radio" name="${prefix}pr_ontime" value="否" class="w-4 h-4 text-red-600"> <span class="ml-1">否</span></label>
+                                </div>
+                            </div>`;
+                        } else if (q.id === 'focus') {
+                            html += `<div class="p-3 bg-gray-50 rounded-xl border">
+                                <label class="font-bold text-gray-700 block mb-1">${num}. ${q.label}</label>
+                                <div class="flex gap-1 star-rating text-3xl text-gray-300" id="${prefix}pr_focus_stars">
+                                    ${[1,2,3,4,5].map(i => `<span onclick="setStar('${prefix}pr_focus_stars', ${i})">★</span>`).join('')}
+                                </div>
+                                <input type="hidden" id="${prefix}pr_focus_val">
+                            </div>`;
+                        } else if (q.id === 'task') {
+                            html += `<div class="p-3 bg-gray-50 rounded-xl border">
+                                <label class="font-bold text-gray-700 block mb-1">${num}. ${q.label}</label>
+                                <div class="flex gap-1 star-rating text-3xl text-gray-300" id="${prefix}pr_task_stars">
+                                    ${[1,2,3,4,5].map(i => `<span onclick="setStar('${prefix}pr_task_stars', ${i})">★</span>`).join('')}
+                                </div>
+                                <input type="hidden" id="${prefix}pr_task_val">
+                            </div>`;
+                        } else if (q.id === 'satis') {
+                            html += `<div>
+                                <label class="font-bold text-gray-700 block mb-1">${num}. ${q.label}</label>
+                                <textarea id="${prefix}pr_satis" class="w-full p-2 border rounded-lg" rows="2"></textarea>
+                            </div>`;
+                        } else if (q.id === 'improve') {
+                            html += `<div>
+                                <label class="font-bold text-gray-700 block mb-1">${num}. ${q.label}</label>
+                                <textarea id="${prefix}pr_improve" class="w-full p-2 border rounded-lg" rows="2"></textarea>
+                            </div>`;
+                        } else if (q.id === 'other') {
+                            html += `<div>
+                                <label class="font-bold text-gray-700 block mb-1">${num}. ${q.label}</label>
+                                <textarea id="${prefix}pr_other" class="w-full p-2 border rounded-lg" rows="2"></textarea>
+                            </div>`;
+                        }
+                    });
+                } else {
+                    // Legacy fallback 
+                    html += `<p class="text-red-500">設定資料過期，請重新啟動活動。</p>`;
+                }
+                
+                html += `</div>`;
             } else if (toolId === 'oneSentence') {
                 html += `<p class="mb-2 text-gray-700 font-bold">請用一到兩句話說明今日所學</p>
                     <p class="mb-2 text-gray-500 text-xs">字數限制：20 ~ 50 字</p>
@@ -734,6 +870,7 @@
             document.getElementById('tf-question').value = '';
             document.getElementById('tf-modal').classList.remove('hidden');
         };
+        window.setupPerformanceReview = () => document.getElementById('perf-review-modal').classList.remove('hidden');
         
         window.startPoll = () => {
             const question = document.getElementById('poll-question').value.trim();
@@ -753,6 +890,23 @@
             const question = document.getElementById('tf-question').value.trim();
             document.getElementById('tf-modal').classList.add('hidden');
             activateTool('trueFalse', { question });
+        };
+
+        window.startPerformanceReview = () => {
+            const questions = [];
+            
+            if(document.getElementById('pr-check-1').checked) questions.push({id: 'mood', label: document.getElementById('pr-q1').value.trim()});
+            if(document.getElementById('pr-check-2').checked) questions.push({id: 'ontime', label: document.getElementById('pr-q2').value.trim()});
+            if(document.getElementById('pr-check-3').checked) questions.push({id: 'focus', label: document.getElementById('pr-q3').value.trim()});
+            if(document.getElementById('pr-check-4').checked) questions.push({id: 'task', label: document.getElementById('pr-q4').value.trim()});
+            if(document.getElementById('pr-check-5').checked) questions.push({id: 'satis', label: document.getElementById('pr-q5').value.trim()});
+            if(document.getElementById('pr-check-6').checked) questions.push({id: 'improve', label: document.getElementById('pr-q6').value.trim()});
+            if(document.getElementById('pr-check-7').checked) questions.push({id: 'other', label: document.getElementById('pr-q7').value.trim()});
+
+            if (questions.length === 0) return showCustomAlert('請至少選擇一個問題');
+            
+            document.getElementById('perf-review-modal').classList.add('hidden');
+            activateTool('performanceReview', { questions });
         };
 
         // --- Student Logic ---
@@ -854,6 +1008,15 @@
             container.querySelector('input[type="hidden"]').value = val;
         };
 
+        window.setStar = (containerId, val) => {
+            const container = document.getElementById(containerId);
+            const stars = container.querySelectorAll('span');
+            stars.forEach((s, idx) => {
+                s.className = idx < val ? "active text-3xl" : "text-3xl text-gray-300";
+            });
+            document.getElementById(containerId.replace('stars', 'val')).value = val;
+        };
+
         window.checkLen = (el) => {
             const len = el.value.length;
             const cnt = el.parentElement.querySelector('#char-cnt');
@@ -931,13 +1094,55 @@
                 if (!toolId) return;
 
                 let val = null;
-                // ... validation logic omitted for brevity, keeping existing ...
+                // ... validation logic ...
                 if (toolId === 'selfAssess') {
                     const el = document.querySelector('input[name="sa_level"]:checked');
                     const reason = document.getElementById('sa_reason').value.trim();
                     if(!el) { resetBtn(); return showCustomAlert('請選擇程度'); }
                     if(!reason) { resetBtn(); return showCustomAlert('請輸入原因'); }
                     val = { level: el.value, reason: reason };
+                } else if (toolId === 'performanceReview') {
+                    val = {};
+                    
+                    // Conditionally gather data based on presence in DOM (which means they were selected)
+                    if (document.querySelector('input[name*="pr_mood"]')) {
+                        const el = document.querySelector('input[name*="pr_mood"]:checked');
+                        let mood = el ? el.value : null;
+                        if (mood === 'other') mood = document.getElementById('pr_mood_other').value.trim();
+                        if (!mood) { resetBtn(); return showCustomAlert('請完成心情選擇'); }
+                        val.mood = mood;
+                    }
+                    
+                    if (document.querySelector('input[name*="pr_ontime"]')) {
+                        const el = document.querySelector('input[name*="pr_ontime"]:checked');
+                        if (!el) { resetBtn(); return showCustomAlert('請完成準時與否選擇'); }
+                        val.onTime = el.value;
+                    }
+                    
+                    if (document.getElementById('pr_focus_val')) {
+                        const v = document.getElementById('pr_focus_val').value;
+                        if (!v) { resetBtn(); return showCustomAlert('請完成專注度評分'); }
+                        val.focus = v;
+                    }
+                    
+                    if (document.getElementById('pr_task_val')) {
+                        const v = document.getElementById('pr_task_val').value;
+                        if (!v) { resetBtn(); return showCustomAlert('請完成任務達成評分'); }
+                        val.task = v;
+                    }
+                    
+                    if (document.getElementById('pr_satis')) {
+                        val.satis = document.getElementById('pr_satis').value.trim();
+                    }
+                    
+                    if (document.getElementById('pr_improve')) {
+                        val.improve = document.getElementById('pr_improve').value.trim();
+                    }
+
+                    if (document.getElementById('pr_other')) {
+                        val.other = document.getElementById('pr_other').value.trim();
+                    }
+
                 } else if (toolId === 'reflection321') {
                     const p3 = [
                         document.getElementById('ref_3_0').value.trim(),
@@ -1084,6 +1289,9 @@
                         valStr = `知識:${d.value.p3.join('/')} | 有趣:${d.value.p2.join('/')} | 疑問:${d.value.p1}`;
                     } else if (d.value.level) { 
                         valStr = `L${d.value.level}: ${d.value.reason}`;
+                    } else if (d.value.mood) {
+                        valStr = `心情:${d.value.mood}|準時:${d.value.onTime}|專注:${d.value.focus}星|任務:${d.value.task}星|滿意:${d.value.satis}|改進:${d.value.improve}`;
+                        if (d.value.other) valStr += `|其他:${d.value.other}`;
                     } else {
                         valStr = JSON.stringify(d.value);
                     }
@@ -1111,6 +1319,46 @@
                 let content = '';
                 if (toolId === 'selfAssess') {
                     content = `<span class="font-bold text-blue-600 text-lg">L${d.value.level}</span> <span class="text-gray-600 text-sm ml-2 border-l pl-2">${d.value.reason || ''}</span>`;
+                } else if (toolId === 'performanceReview') {
+                    content = `<div class="text-sm space-y-1">`;
+                    
+                    if (d.value.mood) {
+                        content += `<div class="flex gap-2 mb-1">
+                            <span class="bg-blue-100 text-blue-800 px-2 rounded text-xs">心情: ${d.value.mood}</span>
+                        </div>`;
+                    }
+                    
+                    if (d.value.onTime) {
+                        content += `<div class="flex gap-2 mb-1">
+                            <span class="bg-gray-100 px-2 rounded text-xs">準時: ${d.value.onTime}</span>
+                        </div>`;
+                    }
+                    
+                    if (d.value.focus || d.value.task) {
+                        content += `<div class="flex gap-4 text-xs text-gray-500">`;
+                        if (d.value.focus) content += `<span>專注: ${"★".repeat(d.value.focus)}</span>`;
+                        if (d.value.task) content += `<span>任務: ${"★".repeat(d.value.task)}</span>`;
+                        content += `</div>`;
+                    }
+                    
+                    if (d.value.satis) {
+                        content += `<div class="border-t pt-1 mt-1 text-xs text-gray-600">
+                            <span class="font-bold text-green-600">滿意:</span> ${d.value.satis}
+                        </div>`;
+                    }
+                    
+                    if (d.value.improve) {
+                        content += `<div class="text-xs text-gray-600">
+                            <span class="font-bold text-red-500">改進:</span> ${d.value.improve}
+                        </div>`;
+                    }
+
+                    if (d.value.other) {
+                        content += `<div class="text-xs text-gray-600">
+                            <span class="font-bold text-purple-600">其他:</span> ${d.value.other}
+                        </div>`;
+                    }
+                    content += `</div>`;
                 } else if (toolId === 'reflection321') {
                     const p3 = d.value.p3 ? d.value.p3.join('、') : '';
                     const p2 = d.value.p2 ? d.value.p2.join('、') : '';
@@ -1137,6 +1385,25 @@
                 listEl.appendChild(div);
             });
             if (TOOLS[toolId].type === 'chart') updateChart(toolId, data);
+            
+            // Special chart logic for performance review (Visualizing Mood)
+            if (toolId === 'performanceReview') {
+                const ctx = document.getElementById('resultChart');
+                if (chartInstance) chartInstance.destroy();
+                
+                let map = {};
+                data.forEach(d => {
+                    if(d.value.mood) map[d.value.mood] = (map[d.value.mood] || 0) + 1;
+                });
+                const labels = Object.keys(map);
+                const counts = Object.values(map);
+                
+                chartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: { labels: labels, datasets: [{ label: '人數', data: counts, backgroundColor: ['#FBBF24', '#34D399', '#EF4444', '#60A5FA', '#9CA3AF', '#8B5CF6'], borderWidth: 1 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', title: { display: true, text: '心情分佈' } } } }
+                });
+            }
         }
 
         function updateChart(toolId, data) {
